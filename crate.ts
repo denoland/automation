@@ -183,6 +183,17 @@ export class Crate {
     return dependencies;
   }
 
+  async getVersionTagInfo() {
+    const tags = await this.repo.getGitTags();
+    const vCount =
+      tags.filter((t) => /^v[0-9]+\.[0-9]+\.[0-9]+$/.test(t)).length;
+    const noVCount =
+      tags.filter((t) => /^v[0-9]+\.[0-9]+\.[0-9]+$/.test(t)).length;
+    const version = this.version;
+    const name = vCount > noVCount ? `v${version}` : version;
+    return { name, exists: tags.includes(name) };
+  }
+
   async isPublished() {
     const cratesIoMetadata = await getCratesIoMetadata(this.name);
     return cratesIoMetadata.versions.some((v) =>

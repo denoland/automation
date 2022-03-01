@@ -44,9 +44,19 @@ export class Repo {
   getCrate(name: string) {
     const crate = this.#crates.find((c) => c.name === name);
     if (crate == null) {
-      throw new Error(`Could not find crate with name: ${name}`);
+      throw new Error(
+        `Could not find crate with name: ${name}\n${this.crateNamesText()}`,
+      );
     }
     return crate;
+  }
+
+  /** Gets the names of all the crates for showing in error messages
+   * or for debugging purpopses. */
+  crateNamesText() {
+    return this.#crates.length === 0
+      ? "<NO CRATES>"
+      : this.#crates.map((c) => `- ${c.name}`).join("\n");
   }
 
   addCrate(crateMetadata: CargoPackageMetadata) {
@@ -82,19 +92,33 @@ export class Repo {
     return output.trim().length > 0;
   }
 
-  switchMain() {
+  async assertCurrentBranch(expectedName: string) {
+    const actualName = await this.gitCurrentBranch();
+    if (actualName !== expectedName) {
+      throw new Error(
+        `Expected branch ${expectedName}, but current branch was ${actualName}.`,
+      );
+    }
+  }
+
+  async gitCurrentBranch() {
+    return (await this.runCommand(["git", "rev-parse", "--abbrev-ref", "HEAD"]))
+      .trim();
+  }
+
+  gitSwitchMain() {
     return this.runCommand(["git", "switch", "main"]);
   }
 
-  pullUpstreamMain() {
+  gitPullUpstreamMain() {
     return this.runCommand(["git", "pull", "upstream", "main"]);
   }
 
-  resetHard() {
+  gitResetHard() {
     return this.runCommand(["git", "reset", "--hard"]);
   }
 
-  branch(name: string) {
+  gitBranch(name: string) {
     return this.runCommandWithOutput(["git", "checkout", "-b", name]);
   }
 
@@ -102,12 +126,16 @@ export class Repo {
     return this.runCommandWithOutput(["git", "add", "."]);
   }
 
-  commit(message: string) {
+  gitTag(name: string) {
+    return this.runCommandWithOutput(["git", "tag", name]);
+  }
+
+  gitCommit(message: string) {
     return this.runCommandWithOutput(["git", "commit", "-m", message]);
   }
 
-  push() {
-    return this.runCommandWithOutput(["git", "push"]);
+  gitPush(...additionalArgs: string[]) {
+    return this.runCommandWithOutput(["git", "push", ...additionalArgs]);
   }
 
   async getGitLogFromTag(tagName: string) {
@@ -115,6 +143,10 @@ export class Repo {
     return new GitLogOutput(
       await this.runCommand(["git", "log", "--oneline", `${tagName}..`]),
     );
+  }
+
+  async getGitTags() {
+    return (await this.runCommand(["git", "tag"])).split(/\r?\n/);
   }
 
   runCommand(cmd: string[]) {
