@@ -50,7 +50,7 @@ export class Repo {
   }
 
   addCrate(crateMetadata: CargoPackageMetadata) {
-    if (this.#crates.some(c => c.name === crateMetadata.name)) {
+    if (this.#crates.some((c) => c.name === crateMetadata.name)) {
       throw new Error(`Cannot add ${crateMetadata.name} twice to a repo.`);
     }
     this.#crates.push(
