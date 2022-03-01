@@ -139,11 +139,52 @@ export class Repo {
     return this.runCommandWithOutput(["git", "push", ...additionalArgs]);
   }
 
+  /** Converts the commit history to be a full clone. */
+  gitFetchUnshallow(remote: "origin" | "upstream") {
+    return this.runCommandWithOutput(["git", "fetch", remote, "--unshallow"]);
+  }
+
+  /** Fetches the commit history up until a specified revision. */
+  gitFetchUntil(remote: "origin" | "upstream", revision: string) {
+    return this.runCommandWithOutput([
+      "git",
+      "fetch",
+      remote,
+      `--shallow-exclude=${revision}`,
+    ]);
+  }
+
+  async gitIsShallow() {
+    const output = await this.runCommand([
+      "git",
+      "rev-parse",
+      `--is-shallow-repository`,
+    ]);
+    return output.trim() === "true";
+  }
+
+  /** Fetches the history for shallow repos. */
+  async gitFetchHistoryIfNecessary(
+    remote: "origin" | "upstream",
+    revision?: string,
+  ) {
+    if (!(await this.gitIsShallow())) {
+      return;
+    }
+
+    if (revision != null) {
+      return await this.gitFetchUntil(remote, revision);
+    } else {
+      return await this.gitFetchUnshallow(remote);
+    }
+  }
+
   gitFetchTags(remote: "origin" | "upstream") {
     return this.runCommandWithOutput(["git", "fetch", remote, `--tags`]);
   }
 
   async getGitLogFromTags(
+    remote: "origin" | "upstream",
     tagNameFrom: string | undefined,
     tagNameTo: string | undefined,
   ) {
@@ -152,6 +193,15 @@ export class Repo {
         "You must at least supply a tag name from or tag name to.",
       );
     }
+
+    // Ensure we have the git history up to this tag
+    // For example, GitHub actions will do a shallow clone.
+    try {
+      await this.gitFetchHistoryIfNecessary(remote, tagNameFrom);
+    } catch (err) {
+      console.log(`Error fetching commit history: ${err}`);
+    }
+
     return new GitLogOutput(
       await this.runCommand([
         "git",

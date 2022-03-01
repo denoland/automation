@@ -55,8 +55,7 @@ if (repoTags.has(tagName)) {
 
   console.log(`Creating release...`);
   const previousTag = repoTags.getPreviousVersionTag(mainCrate.version);
-  const gitLog = await repo.getGitLogFromTags(previousTag, tagName);
-  console.log(gitLog.formatForReleaseMarkdown());
+  const gitLog = await repo.getGitLogFromTags("origin", previousTag, tagName);
   await octokit.request(`POST /repos/{owner}/{repo}/releases`, {
     ...getGitHubRepository(),
     tag_name: tagName,
