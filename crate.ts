@@ -1,3 +1,5 @@
+// Copyright 2018-2022 the Deno authors. All rights reserved. MIT license.
+
 import { path, semver } from "./deps.ts";
 import type { Repo } from "./repo.ts";
 import {
@@ -36,7 +38,39 @@ export class Crate {
   }
 
   get version() {
-    return semver.parse(this.#pkg.version)!;
+    return this.#pkg.version;
+  }
+
+  /** Prompts the user how they would like to patch and increments the version accordingly. */
+  async promptAndIncrement() {
+    const result = await this.promptAndTryIncrement();
+    if (result == null) {
+      throw new Error("No decision.");
+    }
+    return result;
+  }
+
+  /** Prompts the user how they would like to patch and increments the version accordingly. */
+  async promptAndTryIncrement() {
+    console.log(`${this.name} is on ${this.version}`);
+    const versionIncrement = getVersionIncrement();
+    if (versionIncrement != null) {
+      await this.increment(versionIncrement);
+      console.log(`Set version to ${this.version}`);
+    }
+    return versionIncrement;
+
+    function getVersionIncrement() {
+      if (confirm("Increment patch?")) {
+        return "patch";
+      } else if (confirm("Increment minor?")) {
+        return "minor";
+      } else if (confirm("Increment major?")) {
+        return "major";
+      } else {
+        return undefined;
+      }
+    }
   }
 
   increment(part: "major" | "minor" | "patch") {
@@ -182,7 +216,7 @@ export class Crate {
   }
 
   build(args?: { allFeatures?: boolean; additionalArgs?: string[] }) {
-    const cliArgs = ["cargo", "build", "-vv"];
+    const cliArgs = ["cargo", "build"];
     if (args?.allFeatures) {
       cliArgs.push("--all-features");
     }

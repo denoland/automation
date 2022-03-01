@@ -33,6 +33,7 @@ export class Repo {
         repo.addCrate(pkg);
       }
     }
+
     return repo;
   }
 
@@ -43,34 +44,32 @@ export class Repo {
   getCrate(name: string) {
     const crate = this.#crates.find((c) => c.name === name);
     if (crate == null) {
-      throw new Error(`Could not find crate with name: ${crate}`);
+      throw new Error(`Could not find crate with name: ${name}`);
     }
     return crate;
   }
 
   addCrate(crateMetadata: CargoPackageMetadata) {
+    if (this.#crates.some(c => c.name === crateMetadata.name)) {
+      throw new Error(`Cannot add ${crateMetadata.name} twice to a repo.`);
+    }
     this.#crates.push(
       new Crate(this, crateMetadata),
     );
   }
 
-  getCratesPublishOrder() {
-    const pendingCrates = [...this.crates];
-    const sortedCrates = [];
-
-    while (pendingCrates.length > 0) {
-      for (let i = pendingCrates.length - 1; i >= 0; i--) {
-        const crate = pendingCrates[i];
-        const hasPendingDependency = crate.dependenciesInRepo()
-          .some((c) => pendingCrates.includes(c));
-        if (!hasPendingDependency) {
-          sortedCrates.push(crate);
-          pendingCrates.splice(i, 1);
-        }
-      }
+  async loadCrateInSubDir(name: string, subDir: string) {
+    subDir = path.join(this.folderPath, subDir);
+    const metadata = await getCargoMetadata(subDir);
+    const pkg = metadata.packages.find((pkg) => pkg.name === name);
+    if (!pkg) {
+      throw new Error(`Could not find package with name ${name}`);
     }
+    this.addCrate(pkg);
+  }
 
-    return sortedCrates;
+  getCratesPublishOrder() {
+    return getCratesPublishOrder(this.crates);
   }
 
   async hasLocalChanges() {
@@ -131,4 +130,23 @@ export class Repo {
       cmd,
     });
   }
+}
+
+export function getCratesPublishOrder(crates: readonly Crate[]) {
+  const pendingCrates = [...crates];
+  const sortedCrates = [];
+
+  while (pendingCrates.length > 0) {
+    for (let i = pendingCrates.length - 1; i >= 0; i--) {
+      const crate = pendingCrates[i];
+      const hasPendingDependency = crate.dependenciesInRepo()
+        .some((c) => pendingCrates.includes(c));
+      if (!hasPendingDependency) {
+        sortedCrates.push(crate);
+        pendingCrates.splice(i, 1);
+      }
+    }
+  }
+
+  return sortedCrates;
 }
