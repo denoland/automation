@@ -15,10 +15,12 @@
 //
 // ```yml
 // - name: Release on Version Change
+//   env:
+//     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 //   if: |
 //     github.repository == 'denoland/<REPO_NAME_GOES_HERE>' &&
 //     github.ref == 'refs/heads/main'
-//    run: deno run --allow-read --allow-run=cargo,git <url-to-this-module>
+//    run: deno run --allow-read --allow-run=cargo,git --allow-env <url-to-this-module>
 // ```
 //
 // If you have multiple crates, then you will need to provide the crate name
@@ -48,7 +50,7 @@ if (repoTags.has(tagName)) {
 } else {
   console.log(`Tagging ${tagName}...`);
   await repo.gitTag(tagName);
-  await repo.gitPush(tagName);
+  await repo.gitPush("origin", tagName);
 
   console.log(`Creating release...`);
   await octokit.request(`POST /repos/{owner}/{repo}/releases`, {
