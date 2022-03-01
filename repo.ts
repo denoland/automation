@@ -2,10 +2,11 @@
 
 import { CargoPackageMetadata, getCargoMetadata } from "./cargo.ts";
 import { Crate } from "./crate.ts";
-import { path, semver } from "./deps.ts";
+import { path } from "./deps.ts";
 import {
   existsSync,
   GitLogOutput,
+  GitTags,
   runCommand,
   runCommandWithOutput,
 } from "./helpers.ts";
@@ -138,31 +139,36 @@ export class Repo {
     return this.runCommandWithOutput(["git", "push", ...additionalArgs]);
   }
 
-  async getGitLogFromTag(tagName: string) {
-    await this.runCommandWithOutput(["git", "fetch", "upstream", `--tags`]);
+  gitFetchUpstreamTags() {
+    return this.runCommandWithOutput(["git", "fetch", "upstream", `--tags`]);
+  }
+
+  async getGitLogFromTags(
+    tagNameFrom: string | undefined,
+    tagNameTo: string | undefined,
+  ) {
+    if (tagNameFrom == null && tagNameTo == null) {
+      throw new Error(
+        "You must at least supply a tag name from or tag name to.",
+      );
+    }
+    try {
+      await this.gitFetchUpstreamTags();
+    } catch (err) {
+      console.error(`Failed to fetch upstream git tags: ${err}`);
+    }
     return new GitLogOutput(
-      await this.runCommand(["git", "log", "--oneline", `${tagName}..`]),
+      await this.runCommand([
+        "git",
+        "log",
+        "--oneline",
+        `${tagNameFrom ?? ""}..${tagNameTo ?? ""}`,
+      ]),
     );
   }
 
   async getGitTags() {
-    return (await this.runCommand(["git", "tag"])).split(/\r?\n/);
-  }
-
-  /** Gets the tags that are for a version. */
-  async getGitVersionTags() {
-    const tagNames = await this.getGitTags();
-    const result = [];
-    for (const name of tagNames) {
-      const version = semver.parse(name.replace(/^v/, ""));
-      if (version != null) {
-        result.push({
-          name,
-          version,
-        });
-      }
-    }
-    return result;
+    return new GitTags((await this.runCommand(["git", "tag"])).split(/\r?\n/));
   }
 
   runCommand(cmd: string[]) {

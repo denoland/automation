@@ -2,18 +2,19 @@
 
 // # Overview
 //
-// Automatically tags the repo with a "version tag" when the version of the repo's
-// crate or specified crate changes when merged to main. For example, say you have
-// version 1.1.0 tagged and you merge in a commit to main that changes the version in
-// Cargo.toml to 1.1.1... this would detect that and tag the repo with 1.1.1.
+// Automatically tags and releases the repo with a "version tag" when the version
+// of the repo's crate or specified crate changes when merged to main. For example,
+// say you have version 1.1.0 tagged and you merge in a commit to main that changes
+// the version in Cargo.toml to 1.1.1... this would detect that and tag the repo
+// with 1.1.1.
 //
-// Note: this will detect whether to add a `v` prefix or not based on what the
-// repo mostly does.
+// Note: this will detect whether to add a `v` prefix or not based on the most recent
+// version tag.
 //
 // # Example Use
 //
 // ```yml
-// - name: Tag Version on Change
+// - name: Release on Version Change
 //   if: |
 //     github.repository == 'denoland/<REPO_NAME_GOES_HERE>' &&
 //     github.ref == 'refs/heads/main'
@@ -28,22 +29,34 @@
 // ```
 
 import { path, Repo } from "../mod.ts";
+import { createOctoKit, getGitHubRepository } from "../github_actions.ts";
 
 const cwd = path.resolve(".");
 const repoName = path.basename(cwd);
 const repo = await Repo.load(repoName, cwd);
+const octokit = createOctoKit();
 
 // safeguard for in case if someone doesn't run this on the main branch
 await repo.assertCurrentBranch("main");
 
 // now ensure this tag exists
-const tagInfo = await getMainCrate().getVersionTagInfo();
-if (tagInfo.exists) {
-  console.log(`Tag ${tagInfo.name} already exists.`);
+const mainCrate = getMainCrate();
+const repoTags = await repo.getGitTags();
+const tagName = repoTags.getTagNameForVersion(mainCrate.version);
+if (repoTags.has(tagName)) {
+  console.log(`Tag ${tagName} already exists.`);
 } else {
-  console.log(`Tagging ${tagInfo.name}...`);
-  await repo.gitTag(tagInfo.name);
-  await repo.gitPush(tagInfo.name);
+  console.log(`Tagging ${tagName}...`);
+  await repo.gitTag(tagName);
+  await repo.gitPush(tagName);
+
+  console.log(`Creating release...`);
+  await octokit.request(`POST /repos/{owner}/{repo}/releases`, {
+    ...getGitHubRepository(),
+    tag_name: tagName,
+    generate_release_notes: true,
+    draft: false,
+  });
 }
 
 /** Gets the crate to pull the version from. */
