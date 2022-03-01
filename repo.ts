@@ -6,6 +6,7 @@ import { path } from "./deps.ts";
 import {
   existsSync,
   GitLogOutput,
+  GitTags,
   runCommand,
   runCommandWithOutput,
 } from "./helpers.ts";
@@ -44,9 +45,19 @@ export class Repo {
   getCrate(name: string) {
     const crate = this.#crates.find((c) => c.name === name);
     if (crate == null) {
-      throw new Error(`Could not find crate with name: ${name}`);
+      throw new Error(
+        `Could not find crate with name: ${name}\n${this.crateNamesText()}`,
+      );
     }
     return crate;
+  }
+
+  /** Gets the names of all the crates for showing in error messages
+   * or for debugging purpopses. */
+  crateNamesText() {
+    return this.#crates.length === 0
+      ? "<NO CRATES>"
+      : this.#crates.map((c) => `- ${c.name}`).join("\n");
   }
 
   addCrate(crateMetadata: CargoPackageMetadata) {
@@ -82,19 +93,33 @@ export class Repo {
     return output.trim().length > 0;
   }
 
-  switchMain() {
+  async assertCurrentBranch(expectedName: string) {
+    const actualName = await this.gitCurrentBranch();
+    if (actualName !== expectedName) {
+      throw new Error(
+        `Expected branch ${expectedName}, but current branch was ${actualName}.`,
+      );
+    }
+  }
+
+  async gitCurrentBranch() {
+    return (await this.runCommand(["git", "rev-parse", "--abbrev-ref", "HEAD"]))
+      .trim();
+  }
+
+  gitSwitchMain() {
     return this.runCommand(["git", "switch", "main"]);
   }
 
-  pullUpstreamMain() {
-    return this.runCommand(["git", "pull", "upstream", "main"]);
+  gitPullMain(remote: "upstream" | "origin") {
+    return this.runCommand(["git", "pull", remote, "main"]);
   }
 
-  resetHard() {
+  gitResetHard() {
     return this.runCommand(["git", "reset", "--hard"]);
   }
 
-  branch(name: string) {
+  gitBranch(name: string) {
     return this.runCommandWithOutput(["git", "checkout", "-b", name]);
   }
 
@@ -102,19 +127,93 @@ export class Repo {
     return this.runCommandWithOutput(["git", "add", "."]);
   }
 
-  commit(message: string) {
+  gitTag(name: string) {
+    return this.runCommandWithOutput(["git", "tag", name]);
+  }
+
+  gitCommit(message: string) {
     return this.runCommandWithOutput(["git", "commit", "-m", message]);
   }
 
-  push() {
-    return this.runCommandWithOutput(["git", "push"]);
+  gitPush(...additionalArgs: string[]) {
+    return this.runCommandWithOutput(["git", "push", ...additionalArgs]);
   }
 
-  async getGitLogFromTag(tagName: string) {
-    await this.runCommandWithOutput(["git", "fetch", "upstream", `--tags`]);
+  /** Converts the commit history to be a full clone. */
+  gitFetchUnshallow(remote: "origin" | "upstream") {
+    return this.runCommandWithOutput(["git", "fetch", remote, "--unshallow"]);
+  }
+
+  /** Fetches the commit history up until a specified revision. */
+  gitFetchUntil(remote: "origin" | "upstream", revision: string) {
+    return this.runCommandWithOutput([
+      "git",
+      "fetch",
+      remote,
+      `--shallow-exclude=${revision}`,
+    ]);
+  }
+
+  async gitIsShallow() {
+    const output = await this.runCommand([
+      "git",
+      "rev-parse",
+      `--is-shallow-repository`,
+    ]);
+    return output.trim() === "true";
+  }
+
+  /** Fetches the history for shallow repos. */
+  async gitFetchHistoryIfNecessary(
+    remote: "origin" | "upstream",
+    revision?: string,
+  ) {
+    if (!(await this.gitIsShallow())) {
+      return;
+    }
+
+    if (revision != null) {
+      return await this.gitFetchUntil(remote, revision);
+    } else {
+      return await this.gitFetchUnshallow(remote);
+    }
+  }
+
+  gitFetchTags(remote: "origin" | "upstream") {
+    return this.runCommandWithOutput(["git", "fetch", remote, `--tags`]);
+  }
+
+  async getGitLogFromTags(
+    remote: "origin" | "upstream",
+    tagNameFrom: string | undefined,
+    tagNameTo: string | undefined,
+  ) {
+    if (tagNameFrom == null && tagNameTo == null) {
+      throw new Error(
+        "You must at least supply a tag name from or tag name to.",
+      );
+    }
+
+    // Ensure we have the git history up to this tag
+    // For example, GitHub actions will do a shallow clone.
+    try {
+      await this.gitFetchHistoryIfNecessary(remote, tagNameFrom);
+    } catch (err) {
+      console.log(`Error fetching commit history: ${err}`);
+    }
+
     return new GitLogOutput(
-      await this.runCommand(["git", "log", "--oneline", `${tagName}..`]),
+      await this.runCommand([
+        "git",
+        "log",
+        "--oneline",
+        `${tagNameFrom ?? ""}..${tagNameTo ?? ""}`,
+      ]),
     );
+  }
+
+  async getGitTags() {
+    return new GitTags((await this.runCommand(["git", "tag"])).split(/\r?\n/));
   }
 
   runCommand(cmd: string[]) {
