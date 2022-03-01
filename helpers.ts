@@ -110,14 +110,16 @@ export class GitLogOutput {
       "test",
     ];
     return this.#output.split(/\r?\n/)
-      .map((line) => line.replace(/^[a-f0-9]{9} /i, "").trim())
+      // strip hash prefix
+      .map((line) => line.replace(/^[a-f0-9]+ /i, "").trim())
       .filter((l) => {
         // don't include version commits
-        if (semver.parse(l.trim())) {
+        if (/^v[0-9]+\.[0-9]+\.[0-9]+$/.test(l)) {
           return false;
         }
 
-        return !IGNORED_COMMIT_PREFIX.some((prefix) => l.startsWith(prefix)) &&
+        return !IGNORED_COMMIT_PREFIX
+          .some((prefix) => l.startsWith(prefix)) &&
           l.length > 0;
       })
       .sort()

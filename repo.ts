@@ -111,8 +111,8 @@ export class Repo {
     return this.runCommand(["git", "switch", "main"]);
   }
 
-  gitPullUpstreamMain() {
-    return this.runCommand(["git", "pull", "upstream", "main"]);
+  gitPullMain(remote: "upstream" | "origin") {
+    return this.runCommand(["git", "pull", remote, "main"]);
   }
 
   gitResetHard() {
@@ -151,11 +151,6 @@ export class Repo {
       throw new Error(
         "You must at least supply a tag name from or tag name to.",
       );
-    }
-    try {
-      await this.gitFetchTags("upstream");
-    } catch (err) {
-      console.error(`Failed to fetch upstream git tags: ${err}`);
     }
     return new GitLogOutput(
       await this.runCommand([

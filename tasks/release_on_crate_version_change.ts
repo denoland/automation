@@ -54,10 +54,13 @@ if (repoTags.has(tagName)) {
   await repo.gitPush("origin", tagName);
 
   console.log(`Creating release...`);
+  const previousTag = repoTags.getPreviousVersionTag(mainCrate.version);
+  const gitLog = await repo.getGitLogFromTags(previousTag, tagName);
+  console.log(gitLog.formatForReleaseMarkdown());
   await octokit.request(`POST /repos/{owner}/{repo}/releases`, {
     ...getGitHubRepository(),
     tag_name: tagName,
-    generate_release_notes: true,
+    body: gitLog.formatForReleaseMarkdown(),
     draft: false,
   });
 }
