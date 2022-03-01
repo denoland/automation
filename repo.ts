@@ -139,8 +139,8 @@ export class Repo {
     return this.runCommandWithOutput(["git", "push", ...additionalArgs]);
   }
 
-  gitFetchUpstreamTags() {
-    return this.runCommandWithOutput(["git", "fetch", "upstream", `--tags`]);
+  gitFetchTags(remote: "origin" | "upstream") {
+    return this.runCommandWithOutput(["git", "fetch", remote, `--tags`]);
   }
 
   async getGitLogFromTags(
@@ -153,7 +153,7 @@ export class Repo {
       );
     }
     try {
-      await this.gitFetchUpstreamTags();
+      await this.gitFetchTags("upstream");
     } catch (err) {
       console.error(`Failed to fetch upstream git tags: ${err}`);
     }

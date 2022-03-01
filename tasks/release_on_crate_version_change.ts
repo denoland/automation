@@ -20,14 +20,14 @@
 //   if: |
 //     github.repository == 'denoland/<REPO_NAME_GOES_HERE>' &&
 //     github.ref == 'refs/heads/main'
-//    run: deno run --allow-read --allow-run=cargo,git --allow-env <url-to-this-module>
+//    run: deno run -A --no-check <url-to-this-module>
 // ```
 //
 // If you have multiple crates, then you will need to provide the crate name
 // to use to determine the tag name as an argument to the script.
 //
 // ```bash
-// deno run --allow-read --allow-run=cargo,git <url-to-this-module> <crate-name-goes-here>
+// deno run -A --no-check <url-to-this-module> <crate-name-goes-here>
 // ```
 
 import { path, Repo } from "../mod.ts";
@@ -43,6 +43,7 @@ await repo.assertCurrentBranch("main");
 
 // now ensure this tag exists
 const mainCrate = getMainCrate();
+await repo.gitFetchTags("origin");
 const repoTags = await repo.getGitTags();
 const tagName = repoTags.getTagNameForVersion(mainCrate.version);
 if (repoTags.has(tagName)) {
