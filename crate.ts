@@ -183,15 +183,20 @@ export class Crate {
     return dependencies;
   }
 
+  /** Gets the git tag that would be used for this version
+   * and whether it exists or not.
+   *
+   * @remarks This will add a `v` prefix to the tag if the last
+   * version tag also used that prefix.
+   */
   async getVersionTagInfo() {
-    const tags = await this.repo.getGitTags();
-    const vCount =
-      tags.filter((t) => /^v[0-9]+\.[0-9]+\.[0-9]+$/.test(t)).length;
-    const noVCount =
-      tags.filter((t) => /^v[0-9]+\.[0-9]+\.[0-9]+$/.test(t)).length;
+    const versionTags = await this.repo.getGitVersionTags();
     const version = this.version;
-    const name = vCount > noVCount ? `v${version}` : version;
-    return { name, exists: tags.includes(name) };
+    versionTags.sort((a, b) => a.version.compare(b.version));
+    const mostRecentTag = versionTags[versionTags.length - 1];
+    const usesVPrefix = mostRecentTag?.name.startsWith("v") ?? false;
+    const name = usesVPrefix ? `v${version}` : version;
+    return { name, exists: versionTags.some(t => t.name === name) };
   }
 
   async isPublished() {

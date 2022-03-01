@@ -2,7 +2,7 @@
 
 import { CargoPackageMetadata, getCargoMetadata } from "./cargo.ts";
 import { Crate } from "./crate.ts";
-import { path } from "./deps.ts";
+import { path, semver } from "./deps.ts";
 import {
   existsSync,
   GitLogOutput,
@@ -147,6 +147,22 @@ export class Repo {
 
   async getGitTags() {
     return (await this.runCommand(["git", "tag"])).split(/\r?\n/);
+  }
+
+  /** Gets the tags that are for a version. */
+  async getGitVersionTags() {
+    const tagNames = await this.getGitTags();
+    const result = [];
+    for (const name of tagNames) {
+      const version = semver.parse(name.replace(/^v/, ""));
+      if (version != null) {
+        result.push({
+          name,
+          version,
+        });
+      }
+    }
+    return result;
   }
 
   runCommand(cmd: string[]) {
