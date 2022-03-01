@@ -183,3 +183,7 @@ export class GitTags {
     return previousVersion?.name;
   }
 }
+
+export function containsVersion(text: string) {
+  return /[0-9]+\.[0-9]+\.[0-9]+/.test(text);
+}

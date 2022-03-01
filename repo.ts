@@ -212,6 +212,16 @@ export class Repo {
     );
   }
 
+  /** Gets the commit message for the current commit. */
+  async gitCurrentCommitMessage() {
+    return (await this.runCommand([
+      "git",
+      "log",
+      "-1",
+      `--pretty=%B`,
+    ])).trim();
+  }
+
   async getGitTags() {
     return new GitTags((await this.runCommand(["git", "tag"])).split(/\r?\n/));
   }
