@@ -20,11 +20,9 @@
 // deno run -A --no-check <url-to-this-module> <crate-name-goes-here>
 // ```
 //
-// If you want to publish to crates.io, provide a `--publish` flag:
-//
-// ```bash
-// deno run -A --no-check <url-to-this-module> --publish
-// ```
+// Flags:
+// - `--publish` - Publishes all the unpublished crates in the repo to crates.io
+// - `--skip-release` - Skips doing a GitHub release.
 //
 // # Example Use
 //
@@ -75,15 +73,17 @@ if (repoTags.has(tagName)) {
   await repo.gitTag(tagName);
   await repo.gitPush("origin", tagName);
 
-  console.log(`Creating release...`);
-  const previousTag = repoTags.getPreviousVersionTag(mainCrate.version);
-  const gitLog = await repo.getGitLogFromTags("origin", previousTag, tagName);
-  await octokit.request(`POST /repos/{owner}/{repo}/releases`, {
-    ...getGitHubRepository(),
-    tag_name: tagName,
-    body: gitLog.formatForReleaseMarkdown(),
-    draft: false,
-  });
+  if (cliArgs.release) {
+    console.log(`Creating release...`);
+    const previousTag = repoTags.getPreviousVersionTag(mainCrate.version);
+    const gitLog = await repo.getGitLogFromTags("origin", previousTag, tagName);
+    await octokit.request(`POST /repos/{owner}/{repo}/releases`, {
+      ...getGitHubRepository(),
+      tag_name: tagName,
+      body: gitLog.formatForReleaseMarkdown(),
+      draft: false,
+    });
+  }
 }
 
 /** Gets the crate to pull the version from. */
@@ -99,21 +99,31 @@ function getMainCrate() {
   }
 }
 
+interface CliArgs {
+  crate: string | undefined;
+  publish: boolean;
+  release: boolean;
+}
+
 function getCliArgs() {
   // very basic arg parsing... should improve later
-  let crate: string | undefined;
-  let publish = false;
+  const args: CliArgs = {
+    publish: false,
+    release: true,
+    crate: undefined,
+  };
   for (const arg of Deno.args) {
     if (arg === "--publish") {
-      publish = true;
-    } else if (crate == null) {
-      crate = arg;
+      args.publish = true;
+    } else if (arg === "--skip-release") {
+      args.release = false;
+    } else if (arg.startsWith("--")) {
+      throw new Error(`Invalid argument: ${arg}`);
+    } else if (args.crate == null) {
+      args.crate = arg;
     } else {
       throw new Error(`Invalid arguments: ${Deno.args.join(" ")}`);
     }
   }
-  return {
-    publish,
-    crate,
-  };
+  return args;
 }
