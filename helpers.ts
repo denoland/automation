@@ -114,7 +114,7 @@ export class GitLogOutput {
       .map((line) => line.replace(/^[a-f0-9]+ /i, "").trim())
       .filter((l) => {
         // don't include version commits
-        if (/^v?[0-9]+\.[0-9]+\.[0-9]+$/.test(l)) {
+        if (/^v?[0-9]+\.[0-9]+\.[0-9]+/.test(l)) {
           return false;
         }
 
