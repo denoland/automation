@@ -102,9 +102,11 @@ export class GitLogOutput {
 
   formatForReleaseMarkdown() {
     const IGNORED_COMMIT_PREFIX = [
+      "bench",
       "build",
       "chore",
       "ci",
+      "cleanup",
       "docs",
       "refactor",
       "test",
