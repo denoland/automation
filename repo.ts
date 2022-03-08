@@ -241,7 +241,7 @@ export class Repo {
     ])).trim();
   }
 
-  /** Gets the commit message for the current commit. */
+  /** Gets the latest tag on the current branch. */
   async gitLatestTag() {
     return (await this.runCommand([
       "git",
