@@ -89,15 +89,16 @@ export function existsSync(path: string): boolean {
   }
 }
 
+export interface GitLogLine {
+  rev: string;
+  message: string;
+}
+
 export class GitLogOutput {
-  #output: string;
+  lines: GitLogLine[];
 
-  constructor(output: string) {
-    this.#output = output;
-  }
-
-  get outputText() {
-    return this.#output;
+  constructor(lines: GitLogLine[]) {
+    this.lines = lines;
   }
 
   formatForReleaseMarkdown() {
@@ -111,21 +112,19 @@ export class GitLogOutput {
       "refactor",
       "test",
     ];
-    return this.#output.split(/\r?\n/)
-      // strip hash prefix
-      .map((line) => line.replace(/^[a-f0-9]+ /i, "").trim())
+    return this.lines
       .filter((l) => {
         // don't include version commits
-        if (/^v?[0-9]+\.[0-9]+\.[0-9]+/.test(l)) {
+        if (/^v?[0-9]+\.[0-9]+\.[0-9]+/.test(l.message)) {
           return false;
         }
 
         return !IGNORED_COMMIT_PREFIX
-          .some((prefix) => l.startsWith(prefix)) &&
-          l.length > 0;
+          .some((prefix) => l.message.startsWith(prefix)) &&
+          l.message.length > 0;
       })
       .sort()
-      .map((line) => `- ${line}`)
+      .map((line) => `- ${line.message}`)
       .join("\n");
   }
 }

@@ -207,14 +207,28 @@ export class Repo {
       console.log(`Error fetching commit history: ${err}`);
     }
 
-    return new GitLogOutput(
-      await this.runCommand([
-        "git",
-        "log",
-        "--oneline",
-        `${tagNameFrom ?? ""}..${tagNameTo ?? ""}`,
-      ]),
-    );
+    // the output of git log is not stable, so use rev-list
+    const revs = (await this.runCommand([
+      "git",
+      "rev-list",
+      tagNameFrom == null ? tagNameTo! : `${tagNameFrom}..${tagNameTo ?? ""}`,
+    ])).split(/\r?\n/).filter(r => r.trim().length > 0);
+
+    const lines = await Promise.all(revs.map(rev => {
+      return this.runCommand([
+          "git",
+          "log",
+          "--format=%s",
+          "-n",
+          "1",
+          rev,
+        ]).then(message => ({
+          rev,
+          message: message.trim(),
+        }));
+    }));
+
+    return new GitLogOutput(lines);
   }
 
   /** Gets the commit message for the current commit. */
@@ -223,7 +237,17 @@ export class Repo {
       "git",
       "log",
       "-1",
-      `--pretty=%B`,
+      "--pretty=%B",
+    ])).trim();
+  }
+
+  /** Gets the commit message for the current commit. */
+  async gitLatestTag() {
+    return (await this.runCommand([
+      "git",
+      "describe",
+      "--tags",
+      "--abbrev=0",
     ])).trim();
   }
 
