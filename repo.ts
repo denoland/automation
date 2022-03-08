@@ -163,19 +163,24 @@ export class Repo {
     return output.trim() === "true";
   }
 
-  /** Fetches the history for shallow repos. */
-  async gitFetchHistoryIfNecessary(
+  /** Fetches from the provided remove. */
+  async gitFetchHistory(
     remote: "origin" | "upstream",
     revision?: string,
   ) {
-    if (!(await this.gitIsShallow())) {
-      return;
-    }
-
-    if (revision != null) {
-      return await this.gitFetchUntil(remote, revision);
+    if (await this.gitIsShallow()) {
+      // only fetch what is necessary
+      if (revision != null) {
+        await this.gitFetchUntil(remote, revision);
+      } else {
+        await this.gitFetchUnshallow(remote);
+      }
     } else {
-      return await this.gitFetchUnshallow(remote);
+      const args = ["git", "fetch", remote];
+      if (revision != null) {
+        args.push(revision);
+      }
+      await this.runCommandWithOutput(args);
     }
   }
 
@@ -197,7 +202,7 @@ export class Repo {
     // Ensure we have the git history up to this tag
     // For example, GitHub actions will do a shallow clone.
     try {
-      await this.gitFetchHistoryIfNecessary(remote, tagNameFrom);
+      await this.gitFetchHistory(remote, tagNameFrom);
     } catch (err) {
       console.log(`Error fetching commit history: ${err}`);
     }
