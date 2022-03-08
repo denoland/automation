@@ -163,19 +163,24 @@ export class Repo {
     return output.trim() === "true";
   }
 
-  /** Fetches the history for shallow repos. */
-  async gitFetchHistoryIfNecessary(
+  /** Fetches from the provided remove. */
+  async gitFetchHistory(
     remote: "origin" | "upstream",
     revision?: string,
   ) {
-    if (!(await this.gitIsShallow())) {
-      return;
-    }
-
-    if (revision != null) {
-      return await this.gitFetchUntil(remote, revision);
+    if (await this.gitIsShallow()) {
+      // only fetch what is necessary
+      if (revision != null) {
+        await this.gitFetchUntil(remote, revision);
+      } else {
+        await this.gitFetchUnshallow(remote);
+      }
     } else {
-      return await this.gitFetchUnshallow(remote);
+      const args = ["git", "fetch", remote];
+      if (revision != null) {
+        args.push(revision);
+      }
+      await this.runCommandWithOutput(args);
     }
   }
 
@@ -197,19 +202,33 @@ export class Repo {
     // Ensure we have the git history up to this tag
     // For example, GitHub actions will do a shallow clone.
     try {
-      await this.gitFetchHistoryIfNecessary(remote, tagNameFrom);
+      await this.gitFetchHistory(remote, tagNameFrom);
     } catch (err) {
       console.log(`Error fetching commit history: ${err}`);
     }
 
-    return new GitLogOutput(
-      await this.runCommand([
+    // the output of git log is not stable, so use rev-list
+    const revs = (await this.runCommand([
+      "git",
+      "rev-list",
+      tagNameFrom == null ? tagNameTo! : `${tagNameFrom}..${tagNameTo ?? ""}`,
+    ])).split(/\r?\n/).filter((r) => r.trim().length > 0);
+
+    const lines = await Promise.all(revs.map((rev) => {
+      return this.runCommand([
         "git",
         "log",
-        "--oneline",
-        `${tagNameFrom ?? ""}..${tagNameTo ?? ""}`,
-      ]),
-    );
+        "--format=%s",
+        "-n",
+        "1",
+        rev,
+      ]).then((message) => ({
+        rev,
+        message: message.trim(),
+      }));
+    }));
+
+    return new GitLogOutput(lines);
   }
 
   /** Gets the commit message for the current commit. */
@@ -218,7 +237,17 @@ export class Repo {
       "git",
       "log",
       "-1",
-      `--pretty=%B`,
+      "--pretty=%B",
+    ])).trim();
+  }
+
+  /** Gets the latest tag on the current branch. */
+  async gitLatestTag() {
+    return (await this.runCommand([
+      "git",
+      "describe",
+      "--tags",
+      "--abbrev=0",
     ])).trim();
   }
 
