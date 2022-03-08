@@ -212,20 +212,20 @@ export class Repo {
       "git",
       "rev-list",
       tagNameFrom == null ? tagNameTo! : `${tagNameFrom}..${tagNameTo ?? ""}`,
-    ])).split(/\r?\n/).filter(r => r.trim().length > 0);
+    ])).split(/\r?\n/).filter((r) => r.trim().length > 0);
 
-    const lines = await Promise.all(revs.map(rev => {
+    const lines = await Promise.all(revs.map((rev) => {
       return this.runCommand([
-          "git",
-          "log",
-          "--format=%s",
-          "-n",
-          "1",
-          rev,
-        ]).then(message => ({
-          rev,
-          message: message.trim(),
-        }));
+        "git",
+        "log",
+        "--format=%s",
+        "-n",
+        "1",
+        rev,
+      ]).then((message) => ({
+        rev,
+        message: message.trim(),
+      }));
     }));
 
     return new GitLogOutput(lines);
