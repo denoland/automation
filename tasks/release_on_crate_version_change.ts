@@ -52,7 +52,10 @@ if (!containsVersion(await repo.gitCurrentCommitMessage())) {
 }
 
 // safeguard for in case if someone doesn't run this on the main branch
-await repo.assertCurrentBranch("main");
+if ((await repo.gitCurrentBranch()) !== "main") {
+  console.log("Exiting: Not on main branch.");
+  Deno.exit();
+}
 
 // now ensure this tag exists
 const mainCrate = getMainCrate();
