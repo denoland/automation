@@ -227,6 +227,16 @@ export class Crate {
     });
   }
 
+  async publishDryRun() {
+    if (await this.isPublished()) {
+      console.log(`Already published ${this.name} ${this.version}`);
+      return false;
+    }
+
+    console.log(`Dry publishing ${this.name} ${this.version}...`);
+    await this.runCommandWithOutput(["cargo", "publish", "--dry-run"]);
+  }
+
   cargoCheck() {
     return this.runCommandWithOutput(["cargo", "check"]);
   }
