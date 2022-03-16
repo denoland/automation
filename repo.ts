@@ -270,7 +270,7 @@ export class Repo {
   }
 }
 
-export function getCratesPublishOrder(crates: readonly Crate[]) {
+export function getCratesPublishOrder(crates: Iterable<Crate>) {
   const pendingCrates = [...crates];
   const sortedCrates = [];
 

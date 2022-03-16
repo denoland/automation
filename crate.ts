@@ -184,7 +184,7 @@ export class Crate {
         stack.push(...item.immediateDependenciesInRepo());
       }
     }
-    return Array.from(crates.values())
+    return Array.from(crates.values());
   }
 
   /** Gets the immediate child dependencies found in the repo. */
