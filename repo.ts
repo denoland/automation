@@ -14,8 +14,8 @@ import {
 export interface RepoLoadOptions {
   /** Name of the repo. */
   name: string;
-  /** Folder path to the repo. */
-  folderPath: string;
+  /** Path to the directory of the repo on the local file system. */
+  path: string;
   /** Whether crates should not be loaded if a Cargo.toml exists
    * in the root of the repo. If no Cargo.toml exists, then it won't
    * load the crates anyway. */
@@ -32,7 +32,7 @@ export class Repo {
   }
 
   static async load(options: RepoLoadOptions) {
-    const folderPath = path.resolve(options.folderPath);
+    const folderPath = path.resolve(options.path);
     const repo = new Repo(options.name, folderPath);
 
     if (
