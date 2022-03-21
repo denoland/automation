@@ -11,6 +11,17 @@ import {
   runCommandWithOutput,
 } from "./helpers.ts";
 
+export interface RepoLoadOptions {
+  /** Name of the repo. */
+  name: string;
+  /** Folder path to the repo. */
+  folderPath: string;
+  /** Whether crates should not be loaded if a Cargo.toml exists
+   * in the root of the repo. If no Cargo.toml exists, then it won't
+   * load the crates anyway. */
+  skipLoadingCrates?: boolean;
+}
+
 export class Repo {
   #crates: Crate[] = [];
 
@@ -20,11 +31,14 @@ export class Repo {
   ) {
   }
 
-  static async load(name: string, folderPath: string) {
-    folderPath = path.resolve(folderPath);
-    const repo = new Repo(name, folderPath);
+  static async load(options: RepoLoadOptions) {
+    const folderPath = path.resolve(options.folderPath);
+    const repo = new Repo(options.name, folderPath);
 
-    if (existsSync(path.join(folderPath, "Cargo.toml"))) {
+    if (
+      !options.skipLoadingCrates &&
+      existsSync(path.join(folderPath, "Cargo.toml"))
+    ) {
       const metadata = await getCargoMetadata(folderPath);
       for (const memberId of metadata.workspace_members) {
         const pkg = metadata.packages.find((pkg) => pkg.id === memberId);
