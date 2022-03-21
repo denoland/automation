@@ -39,17 +39,40 @@ export class Repo {
       !options.skipLoadingCrates &&
       existsSync(path.join(folderPath, "Cargo.toml"))
     ) {
-      const metadata = await getCargoMetadata(folderPath);
-      for (const memberId of metadata.workspace_members) {
-        const pkg = metadata.packages.find((pkg) => pkg.id === memberId);
-        if (!pkg) {
-          throw new Error(`Could not find package with id ${memberId}`);
-        }
-        repo.addCrate(pkg);
-      }
+      await repo.loadCrates();
     }
 
     return repo;
+  }
+
+  async loadCrates() {
+    const metadata = await getCargoMetadata(this.folderPath);
+    for (const memberId of metadata.workspace_members) {
+      const pkg = metadata.packages.find((pkg) => pkg.id === memberId);
+      if (!pkg) {
+        throw new Error(`Could not find package with id ${memberId}`);
+      }
+      this.addCrate(pkg);
+    }
+  }
+
+  addCrate(crateMetadata: CargoPackageMetadata) {
+    if (this.#crates.some((c) => c.name === crateMetadata.name)) {
+      throw new Error(`Cannot add ${crateMetadata.name} twice to a repo.`);
+    }
+    this.#crates.push(
+      new Crate(this, crateMetadata),
+    );
+  }
+
+  async loadCrateInSubDir(name: string, subDir: string) {
+    subDir = path.join(this.folderPath, subDir);
+    const metadata = await getCargoMetadata(subDir);
+    const pkg = metadata.packages.find((pkg) => pkg.name === name);
+    if (!pkg) {
+      throw new Error(`Could not find package with name ${name}`);
+    }
+    this.addCrate(pkg);
   }
 
   get crates(): ReadonlyArray<Crate> {
@@ -72,25 +95,6 @@ export class Repo {
     return this.#crates.length === 0
       ? "<NO CRATES>"
       : this.#crates.map((c) => `- ${c.name}`).join("\n");
-  }
-
-  addCrate(crateMetadata: CargoPackageMetadata) {
-    if (this.#crates.some((c) => c.name === crateMetadata.name)) {
-      throw new Error(`Cannot add ${crateMetadata.name} twice to a repo.`);
-    }
-    this.#crates.push(
-      new Crate(this, crateMetadata),
-    );
-  }
-
-  async loadCrateInSubDir(name: string, subDir: string) {
-    subDir = path.join(this.folderPath, subDir);
-    const metadata = await getCargoMetadata(subDir);
-    const pkg = metadata.packages.find((pkg) => pkg.name === name);
-    if (!pkg) {
-      throw new Error(`Could not find package with name ${name}`);
-    }
-    this.addCrate(pkg);
   }
 
   getCratesPublishOrder() {
