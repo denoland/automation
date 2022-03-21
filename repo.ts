@@ -11,6 +11,17 @@ import {
   runCommandWithOutput,
 } from "./helpers.ts";
 
+export interface RepoLoadOptions {
+  /** Name of the repo. */
+  name: string;
+  /** Path to the directory of the repo on the local file system. */
+  path: string;
+  /** Whether crates should not be loaded if a Cargo.toml exists
+   * in the root of the repo. If no Cargo.toml exists, then it won't
+   * load the crates anyway. */
+  skipLoadingCrates?: boolean;
+}
+
 export class Repo {
   #crates: Crate[] = [];
 
@@ -20,22 +31,48 @@ export class Repo {
   ) {
   }
 
-  static async load(name: string, folderPath: string) {
-    folderPath = path.resolve(folderPath);
-    const repo = new Repo(name, folderPath);
+  static async load(options: RepoLoadOptions) {
+    const folderPath = path.resolve(options.path);
+    const repo = new Repo(options.name, folderPath);
 
-    if (existsSync(path.join(folderPath, "Cargo.toml"))) {
-      const metadata = await getCargoMetadata(folderPath);
-      for (const memberId of metadata.workspace_members) {
-        const pkg = metadata.packages.find((pkg) => pkg.id === memberId);
-        if (!pkg) {
-          throw new Error(`Could not find package with id ${memberId}`);
-        }
-        repo.addCrate(pkg);
-      }
+    if (
+      !options.skipLoadingCrates &&
+      existsSync(path.join(folderPath, "Cargo.toml"))
+    ) {
+      await repo.loadCrates();
     }
 
     return repo;
+  }
+
+  async loadCrates() {
+    const metadata = await getCargoMetadata(this.folderPath);
+    for (const memberId of metadata.workspace_members) {
+      const pkg = metadata.packages.find((pkg) => pkg.id === memberId);
+      if (!pkg) {
+        throw new Error(`Could not find package with id ${memberId}`);
+      }
+      this.addCrate(pkg);
+    }
+  }
+
+  addCrate(crateMetadata: CargoPackageMetadata) {
+    if (this.#crates.some((c) => c.name === crateMetadata.name)) {
+      throw new Error(`Cannot add ${crateMetadata.name} twice to a repo.`);
+    }
+    this.#crates.push(
+      new Crate(this, crateMetadata),
+    );
+  }
+
+  async loadCrateInSubDir(name: string, subDir: string) {
+    subDir = path.join(this.folderPath, subDir);
+    const metadata = await getCargoMetadata(subDir);
+    const pkg = metadata.packages.find((pkg) => pkg.name === name);
+    if (!pkg) {
+      throw new Error(`Could not find package with name ${name}`);
+    }
+    this.addCrate(pkg);
   }
 
   get crates(): ReadonlyArray<Crate> {
@@ -58,25 +95,6 @@ export class Repo {
     return this.#crates.length === 0
       ? "<NO CRATES>"
       : this.#crates.map((c) => `- ${c.name}`).join("\n");
-  }
-
-  addCrate(crateMetadata: CargoPackageMetadata) {
-    if (this.#crates.some((c) => c.name === crateMetadata.name)) {
-      throw new Error(`Cannot add ${crateMetadata.name} twice to a repo.`);
-    }
-    this.#crates.push(
-      new Crate(this, crateMetadata),
-    );
-  }
-
-  async loadCrateInSubDir(name: string, subDir: string) {
-    subDir = path.join(this.folderPath, subDir);
-    const metadata = await getCargoMetadata(subDir);
-    const pkg = metadata.packages.find((pkg) => pkg.name === name);
-    if (!pkg) {
-      throw new Error(`Could not find package with name ${name}`);
-    }
-    this.addCrate(pkg);
   }
 
   getCratesPublishOrder() {
