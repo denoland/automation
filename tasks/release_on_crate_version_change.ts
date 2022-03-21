@@ -42,7 +42,11 @@ import { createOctoKit, getGitHubRepository } from "../github_actions.ts";
 const cliArgs = getCliArgs();
 const cwd = path.resolve(".");
 const repoName = path.basename(cwd);
-const repo = await Repo.load(repoName, cwd);
+const repo = await Repo.load({
+  name: repoName,
+  path: cwd,
+});
+
 const octokit = createOctoKit();
 
 // only run this for commits that contain a version number in the commit message
