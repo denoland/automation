@@ -129,7 +129,7 @@ export class Repo {
     return this.runCommand(["git", "switch", "main"]);
   }
 
-  gitPullMain(remote: "upstream" | "origin") {
+  gitPullMain(remote: string) {
     return this.runCommand(["git", "pull", remote, "main"]);
   }
 
@@ -158,12 +158,12 @@ export class Repo {
   }
 
   /** Converts the commit history to be a full clone. */
-  gitFetchUnshallow(remote: "origin" | "upstream") {
+  gitFetchUnshallow(remote: string) {
     return this.runCommandWithOutput(["git", "fetch", remote, "--unshallow"]);
   }
 
   /** Fetches the commit history up until a specified revision. */
-  gitFetchUntil(remote: "origin" | "upstream", revision: string) {
+  gitFetchUntil(remote: string, revision: string) {
     return this.runCommandWithOutput([
       "git",
       "fetch",
@@ -181,9 +181,9 @@ export class Repo {
     return output.trim() === "true";
   }
 
-  /** Fetches from the provided remove. */
+  /** Fetches from the provided remote. */
   async gitFetchHistory(
-    remote: "origin" | "upstream",
+    remote: string,
     revision?: string,
   ) {
     if (await this.gitIsShallow()) {
@@ -194,7 +194,7 @@ export class Repo {
         await this.gitFetchUnshallow(remote);
       }
     } else {
-      const args = ["git", "fetch", remote];
+      const args = ["git", "fetch", remote, "--recurse-submodules=no"];
       if (revision != null) {
         args.push(revision);
       }
@@ -202,12 +202,18 @@ export class Repo {
     }
   }
 
-  gitFetchTags(remote: "origin" | "upstream") {
-    return this.runCommandWithOutput(["git", "fetch", remote, `--tags`]);
+  gitFetchTags(remote: string) {
+    return this.runCommandWithOutput([
+      "git",
+      "fetch",
+      remote,
+      "--tags",
+      "--recurse-submodules=no",
+    ]);
   }
 
   async getGitLogFromTags(
-    remote: "origin" | "upstream",
+    remote: string,
     tagNameFrom: string | undefined,
     tagNameTo: string | undefined,
   ) {
@@ -247,6 +253,19 @@ export class Repo {
     }));
 
     return new GitLogOutput(lines);
+  }
+
+  /** Gets the git remotes where the key is the remote name and the value is the url. */
+  async getGitRemotes() {
+    const remotesText = await this.runCommand(["git", "remote"]);
+    const remoteNames = remotesText.split(/\r?\n/)
+      .filter((l) => l.trim().length > 0);
+    const remotes: { [name: string]: string } = {};
+    for (const name of remoteNames) {
+      remotes[name] =
+        (await this.runCommand(["git", "remote", "get-url", name])).trim();
+    }
+    return remotes;
   }
 
   /** Gets the commit message for the current commit. */

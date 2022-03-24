@@ -15,4 +15,4 @@ jobs:
       with:
         deno-version: 1.x
     - run: deno lint
-    - run: deno fmt
+    - run: deno fmt --check
