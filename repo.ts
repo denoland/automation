@@ -258,10 +258,12 @@ export class Repo {
   /** Gets the git remotes where the key is the remote name and the value is the url. */
   async getGitRemotes() {
     const remotesText = await this.runCommand(["git", "remote"]);
-    const remoteNames = remotesText.split(/\r?\n/).filter(l => l.trim().length > 0);
+    const remoteNames = remotesText.split(/\r?\n/)
+      .filter((l) => l.trim().length > 0);
     const remotes: { [name: string]: string } = {};
     for (const name of remoteNames) {
-      remotes[name] = (await this.runCommand(["git", "remote", "get-url", name])).trim();
+      remotes[name] =
+        (await this.runCommand(["git", "remote", "get-url", name])).trim();
     }
     return remotes;
   }
