@@ -206,7 +206,7 @@ export class Crate {
     );
   }
 
-  async publish() {
+  async publish(...additionalArgs: string[]) {
     if (await this.isPublished()) {
       console.log(`Already published ${this.name} ${this.version}`);
       return false;
@@ -219,7 +219,11 @@ export class Crate {
     // retrying, so try a few times before failing hard.
     return await withRetries({
       action: async () => {
-        await this.runCommandWithOutput(["cargo", "publish"]);
+        await this.runCommandWithOutput([
+          "cargo",
+          "publish",
+          ...additionalArgs,
+        ]);
         return true;
       },
       retryCount: 5,
@@ -237,8 +241,12 @@ export class Crate {
     await this.runCommandWithOutput(["cargo", "publish", "--dry-run"]);
   }
 
-  cargoCheck() {
-    return this.runCommandWithOutput(["cargo", "check"]);
+  cargoCheck(...additionalArgs: string[]) {
+    return this.runCommandWithOutput(["cargo", "check", ...additionalArgs]);
+  }
+
+  cargoUpdate(...additionalArgs: string[]) {
+    return this.runCommandWithOutput(["cargo", "update", ...additionalArgs]);
   }
 
   build(args?: { allFeatures?: boolean; additionalArgs?: string[] }) {
