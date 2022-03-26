@@ -87,6 +87,7 @@ if (repoTags.has(tagName)) {
     await octokit.request(`POST /repos/{owner}/{repo}/releases`, {
       ...getGitHubRepository(),
       tag_name: tagName,
+      name: tagName,
       body: gitLog.formatForReleaseMarkdown(),
       draft: false,
     });
