@@ -123,8 +123,8 @@ export class GitLogOutput {
           .some((prefix) => l.message.startsWith(prefix)) &&
           l.message.length > 0;
       })
-      .sort()
       .map((line) => `- ${line.message}`)
+      .sort()
       .join("\n");
   }
 }
