@@ -125,12 +125,12 @@ export class Repo {
       .trim();
   }
 
-  gitSwitchMain() {
-    return this.runCommand(["git", "switch", "main"]);
+  gitSwitch(...args: string[]) {
+    return this.runCommand(["git", "switch", ...args]);
   }
 
-  gitPullMain(remote: string) {
-    return this.runCommand(["git", "pull", remote, "main"]);
+  gitPull(...args: string[]) {
+    return this.runCommand(["git", "pull", ...args]);
   }
 
   gitResetHard() {
