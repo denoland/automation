@@ -36,7 +36,7 @@
 //    run: deno run -A --no-check <url-to-this-module>
 // ```
 
-import { containsVersion, $, Repo } from "../mod.ts";
+import { $, containsVersion, Repo } from "../mod.ts";
 import { createOctoKit, getGitHubRepository } from "../github_actions.ts";
 
 const cliArgs = getCliArgs();

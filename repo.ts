@@ -96,7 +96,9 @@ export class Repo {
   }
 
   async hasLocalChanges() {
-    const output = await this.command("git status --porcelain --untracked-files=no").text();
+    const output = await this.command(
+      "git status --porcelain --untracked-files=no",
+    ).text();
     return output.length > 0;
   }
 
@@ -233,11 +235,11 @@ export class Repo {
         "1",
         rev,
       ])
-      .text()
-      .then((message) => ({
-        rev,
-        message: message,
-      }));
+        .text()
+        .then((message) => ({
+          rev,
+          message: message,
+        }));
     }));
 
     return new GitLogOutput(lines);
@@ -248,8 +250,8 @@ export class Repo {
     const remoteNames = await this.command("git remote").lines();
     const remotes: { [name: string]: string } = {};
     for (const name of remoteNames) {
-      remotes[name] =
-        await this.command(["git", "remote", "get-url", name]).text();
+      remotes[name] = await this.command(["git", "remote", "get-url", name])
+        .text();
     }
     return remotes;
   }
