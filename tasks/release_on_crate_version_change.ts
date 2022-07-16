@@ -36,12 +36,12 @@
 //    run: deno run -A --no-check <url-to-this-module>
 // ```
 
-import { containsVersion, path, Repo } from "../mod.ts";
+import { containsVersion, $, Repo } from "../mod.ts";
 import { createOctoKit, getGitHubRepository } from "../github_actions.ts";
 
 const cliArgs = getCliArgs();
-const cwd = path.resolve(".");
-const repoName = path.basename(cwd);
+const cwd = $.path.resolve(".");
+const repoName = $.path.basename(cwd);
 const repo = await Repo.load({
   name: repoName,
   path: cwd,
@@ -70,18 +70,18 @@ if (repoTags.has(tagName)) {
   console.log(`Tag ${tagName} already exists.`);
 } else {
   if (cliArgs.publish) {
-    console.log(`Publishing ${tagName}...`);
+    $.logTitle(`Publishing ${tagName}...`);
     for (const crate of repo.getCratesPublishOrder()) {
       await crate.publish();
     }
   }
 
-  console.log(`Tagging ${tagName}...`);
+  $.logTitle(`Tagging ${tagName}...`);
   await repo.gitTag(tagName);
   await repo.gitPush("origin", tagName);
 
   if (cliArgs.release) {
-    console.log(`Creating release...`);
+    $.logTitle("Creating release...");
     const previousTag = repoTags.getPreviousVersionTag(mainCrate.version);
     const gitLog = await repo.getGitLogFromTags("origin", previousTag, tagName);
     await octokit.request(`POST /repos/{owner}/{repo}/releases`, {

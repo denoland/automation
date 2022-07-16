@@ -2,14 +2,8 @@
 
 import { CargoPackageMetadata, getCargoMetadata } from "./cargo.ts";
 import { Crate } from "./crate.ts";
-import { path } from "./deps.ts";
-import {
-  existsSync,
-  GitLogOutput,
-  GitTags,
-  runCommand,
-  runCommandWithOutput,
-} from "./helpers.ts";
+import { $, dax } from "./deps.ts";
+import { GitLogOutput, GitTags } from "./helpers.ts";
 
 export interface RepoLoadOptions {
   /** Name of the repo. */
@@ -32,12 +26,12 @@ export class Repo {
   }
 
   static async load(options: RepoLoadOptions) {
-    const folderPath = path.resolve(options.path);
+    const folderPath = $.path.resolve(options.path);
     const repo = new Repo(options.name, folderPath);
 
     if (
       !options.skipLoadingCrates &&
-      existsSync(path.join(folderPath, "Cargo.toml"))
+      $.existsSync($.path.join(folderPath, "Cargo.toml"))
     ) {
       await repo.loadCrates();
     }
@@ -66,7 +60,7 @@ export class Repo {
   }
 
   async loadCrateInSubDir(name: string, subDir: string) {
-    subDir = path.join(this.folderPath, subDir);
+    subDir = $.path.join(this.folderPath, subDir);
     const metadata = await getCargoMetadata(subDir);
     const pkg = metadata.packages.find((pkg) => pkg.name === name);
     if (!pkg) {
@@ -102,13 +96,8 @@ export class Repo {
   }
 
   async hasLocalChanges() {
-    const output = await this.runCommand([
-      "git",
-      "status",
-      "--porcelain",
-      "--untracked-files=no",
-    ]);
-    return output.trim().length > 0;
+    const output = await this.command("git status --porcelain --untracked-files=no").text();
+    return output.length > 0;
   }
 
   async assertCurrentBranch(expectedName: string) {
@@ -120,51 +109,51 @@ export class Repo {
     }
   }
 
-  async gitCurrentBranch() {
-    return (await this.runCommand(["git", "rev-parse", "--abbrev-ref", "HEAD"]))
-      .trim();
+  gitCurrentBranch() {
+    return this.command("git rev-parse --abbrev-ref HEAD")
+      .text();
   }
 
-  gitSwitch(...args: string[]) {
-    return this.runCommand(["git", "switch", ...args]);
+  async gitSwitch(...args: string[]) {
+    await this.command(["git", "switch", ...args]);
   }
 
-  gitPull(...args: string[]) {
-    return this.runCommand(["git", "pull", ...args]);
+  async gitPull(...args: string[]) {
+    await this.command(["git", "pull", ...args]);
   }
 
-  gitResetHard() {
-    return this.runCommand(["git", "reset", "--hard"]);
+  async gitResetHard() {
+    await this.command(["git", "reset", "--hard"]);
   }
 
-  gitBranch(name: string) {
-    return this.runCommandWithOutput(["git", "checkout", "-b", name]);
+  async gitBranch(name: string) {
+    await this.command(["git", "checkout", "-b", name]);
   }
 
-  gitAdd() {
-    return this.runCommandWithOutput(["git", "add", "."]);
+  async gitAdd() {
+    await this.command(["git", "add", "."]);
   }
 
-  gitTag(name: string) {
-    return this.runCommandWithOutput(["git", "tag", name]);
+  async gitTag(name: string) {
+    await this.command(["git", "tag", name]);
   }
 
-  gitCommit(message: string) {
-    return this.runCommandWithOutput(["git", "commit", "-m", message]);
+  async gitCommit(message: string) {
+    await this.command(["git", "commit", "-m", message]);
   }
 
-  gitPush(...additionalArgs: string[]) {
-    return this.runCommandWithOutput(["git", "push", ...additionalArgs]);
+  async gitPush(...additionalArgs: string[]) {
+    await this.command(["git", "push", ...additionalArgs]);
   }
 
   /** Converts the commit history to be a full clone. */
-  gitFetchUnshallow(remote: string) {
-    return this.runCommandWithOutput(["git", "fetch", remote, "--unshallow"]);
+  async gitFetchUnshallow(remote: string) {
+    await this.command(["git", "fetch", remote, "--unshallow"]);
   }
 
   /** Fetches the commit history up until a specified revision. */
-  gitFetchUntil(remote: string, revision: string) {
-    return this.runCommandWithOutput([
+  async gitFetchUntil(remote: string, revision: string) {
+    await this.command([
       "git",
       "fetch",
       remote,
@@ -173,12 +162,9 @@ export class Repo {
   }
 
   async gitIsShallow() {
-    const output = await this.runCommand([
-      "git",
-      "rev-parse",
-      `--is-shallow-repository`,
-    ]);
-    return output.trim() === "true";
+    const output = await this.command("git rev-parse --is-shallow-repository")
+      .text();
+    return output === "true";
   }
 
   /** Fetches from the provided remote. */
@@ -198,12 +184,12 @@ export class Repo {
       if (revision != null) {
         args.push(revision);
       }
-      await this.runCommandWithOutput(args);
+      await this.command(args);
     }
   }
 
-  gitFetchTags(remote: string) {
-    return this.runCommandWithOutput([
+  async gitFetchTags(remote: string) {
+    await this.command([
       "git",
       "fetch",
       remote,
@@ -232,23 +218,25 @@ export class Repo {
     }
 
     // the output of git log is not stable, so use rev-list
-    const revs = (await this.runCommand([
+    const revs = await this.command([
       "git",
       "rev-list",
       tagNameFrom == null ? tagNameTo! : `${tagNameFrom}..${tagNameTo ?? ""}`,
-    ])).split(/\r?\n/).filter((r) => r.trim().length > 0);
+    ]).lines();
 
     const lines = await Promise.all(revs.map((rev) => {
-      return this.runCommand([
+      return this.command([
         "git",
         "log",
         "--format=%s",
         "-n",
         "1",
         rev,
-      ]).then((message) => ({
+      ])
+      .text()
+      .then((message) => ({
         rev,
-        message: message.trim(),
+        message: message,
       }));
     }));
 
@@ -257,53 +245,33 @@ export class Repo {
 
   /** Gets the git remotes where the key is the remote name and the value is the url. */
   async getGitRemotes() {
-    const remotesText = await this.runCommand(["git", "remote"]);
-    const remoteNames = remotesText.split(/\r?\n/)
-      .filter((l) => l.trim().length > 0);
+    const remoteNames = await this.command("git remote").lines();
     const remotes: { [name: string]: string } = {};
     for (const name of remoteNames) {
       remotes[name] =
-        (await this.runCommand(["git", "remote", "get-url", name])).trim();
+        await this.command(["git", "remote", "get-url", name]).text();
     }
     return remotes;
   }
 
   /** Gets the commit message for the current commit. */
-  async gitCurrentCommitMessage() {
-    return (await this.runCommand([
-      "git",
-      "log",
-      "-1",
-      "--pretty=%B",
-    ])).trim();
+  gitCurrentCommitMessage() {
+    return this.command("git log -1 --pretty=%B").text();
   }
 
   /** Gets the latest tag on the current branch. */
-  async gitLatestTag() {
-    return (await this.runCommand([
-      "git",
-      "describe",
-      "--tags",
-      "--abbrev=0",
-    ])).trim();
+  gitLatestTag() {
+    return this.command("git describe --tags --abbrev=0").text();
   }
 
   async getGitTags() {
-    return new GitTags((await this.runCommand(["git", "tag"])).split(/\r?\n/));
+    return new GitTags(await this.command("git tag").lines());
   }
 
-  runCommand(cmd: string[]) {
-    return runCommand({
-      cwd: this.folderPath,
-      cmd,
-    });
-  }
-
-  runCommandWithOutput(cmd: string[]) {
-    return runCommandWithOutput({
-      cwd: this.folderPath,
-      cmd,
-    });
+  command(command: string | string[]) {
+    return new dax.CommandBuilder()
+      .command(command)
+      .cwd(this.folderPath);
   }
 }
 

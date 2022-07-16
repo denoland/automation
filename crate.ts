@@ -1,13 +1,7 @@
 // Copyright 2018-2022 the Deno authors. All rights reserved. MIT license.
 
-import { path, semver } from "./deps.ts";
+import { $, dax, semver } from "./deps.ts";
 import type { Repo } from "./repo.ts";
-import {
-  existsSync,
-  runCommand,
-  runCommandWithOutput,
-  withRetries,
-} from "./helpers.ts";
 import { CargoPackageMetadata } from "./cargo.ts";
 import { getCratesIoMetadata } from "./crates_io.ts";
 
@@ -19,7 +13,7 @@ export class Crate {
     public readonly repo: Repo,
     crateMetadata: CargoPackageMetadata,
   ) {
-    if (!existsSync(crateMetadata.manifest_path)) {
+    if (!$.existsSync(crateMetadata.manifest_path)) {
       throw new Error(`Could not find crate at ${crateMetadata.manifest_path}`);
     }
     this.#pkg = crateMetadata;
@@ -30,7 +24,7 @@ export class Crate {
   }
 
   get folderPath() {
-    return path.dirname(this.#pkg.manifest_path);
+    return $.path.dirname(this.#pkg.manifest_path);
   }
 
   get name() {
@@ -52,11 +46,11 @@ export class Crate {
 
   /** Prompts the user how they would like to patch and increments the version accordingly. */
   async promptAndTryIncrement() {
-    console.log(`${this.name} is on ${this.version}`);
+    $.log(`${this.name} is on ${this.version}`);
     const versionIncrement = getVersionIncrement();
     if (versionIncrement != null) {
       await this.increment(versionIncrement);
-      console.log(`Set version to ${this.version}`);
+      $.log(`  Set version to ${this.version}`);
     }
     return versionIncrement;
 
@@ -79,7 +73,7 @@ export class Crate {
   }
 
   async setVersion(version: string) {
-    console.log(`Setting ${this.name} to ${version}...`);
+    $.logTitle(`Setting ${this.name} to ${version}...`);
     for (const crate of this.repo.crates) {
       await crate.setDependencyVersion(this.name, version);
     }
@@ -117,7 +111,7 @@ export class Crate {
 
   toLocalSource(crate: Crate) {
     return this.#updateManifestFile((fileText) => {
-      const relativePath = path.relative(this.folderPath, crate.folderPath)
+      const relativePath = $.path.relative(this.folderPath, crate.folderPath)
         .replace(/\\/g, "/");
       // try to replace if it had a property in the object
       const versionPropRegex = new RegExp(
@@ -213,52 +207,42 @@ export class Crate {
   async publish(...additionalArgs: string[]) {
     const isPublished = await this.isPublished();
     if (isPublished == null) {
-      console.log(`Never published, so skipping ${this.name} ${this.version}`);
+      $.log(`Never published, so skipping ${this.name} ${this.version}`);
       return false;
     }
     if (isPublished) {
-      console.log(`Already published ${this.name} ${this.version}`);
+      $.log(`Already published ${this.name} ${this.version}`);
       return false;
     }
 
-    console.log(`Publishing ${this.name} ${this.version}...`);
+    $.logTitle(`Publishing ${this.name} ${this.version}...`);
 
     // Sometimes a publish may fail due to the crates.io index
     // not being updated yet. Usually it will be resolved after
     // retrying, so try a few times before failing hard.
-    return await withRetries({
+    return await $.withRetries({
       action: async () => {
-        await this.runCommandWithOutput([
+        await this.command([
           "cargo",
           "publish",
           ...additionalArgs,
         ]);
         return true;
       },
-      retryCount: 5,
-      retryDelaySeconds: 10,
+      count: 5,
+      delay: "10s",
     });
   }
 
-  async publishDryRun() {
-    if (await this.isPublished()) {
-      console.log(`Already published ${this.name} ${this.version}`);
-      return false;
-    }
-
-    console.log(`Dry publishing ${this.name} ${this.version}...`);
-    await this.runCommandWithOutput(["cargo", "publish", "--dry-run"]);
+  async cargoCheck(...additionalArgs: string[]) {
+    await this.command(["cargo", "check", ...additionalArgs]);
   }
 
-  cargoCheck(...additionalArgs: string[]) {
-    return this.runCommandWithOutput(["cargo", "check", ...additionalArgs]);
+  async cargoUpdate(...additionalArgs: string[]) {
+    await this.command(["cargo", "update", ...additionalArgs]);
   }
 
-  cargoUpdate(...additionalArgs: string[]) {
-    return this.runCommandWithOutput(["cargo", "update", ...additionalArgs]);
-  }
-
-  build(args?: { allFeatures?: boolean; additionalArgs?: string[] }) {
+  async build(args?: { allFeatures?: boolean; additionalArgs?: string[] }) {
     const cliArgs = ["cargo", "build"];
     if (args?.allFeatures) {
       cliArgs.push("--all-features");
@@ -266,10 +250,10 @@ export class Crate {
     if (args?.additionalArgs) {
       cliArgs.push(...args.additionalArgs);
     }
-    return this.runCommandWithOutput(cliArgs);
+    await this.command(cliArgs);
   }
 
-  test(args?: { allFeatures?: boolean; additionalArgs?: string[] }) {
+  async test(args?: { allFeatures?: boolean; additionalArgs?: string[] }) {
     const cliArgs = ["cargo", "test"];
     if (args?.allFeatures) {
       cliArgs.push("--all-features");
@@ -277,21 +261,13 @@ export class Crate {
     if (args?.additionalArgs) {
       cliArgs.push(...args.additionalArgs);
     }
-    return this.runCommandWithOutput(cliArgs);
+    await this.command(cliArgs);
   }
 
-  runCommand(cmd: string[]) {
-    return runCommand({
-      cwd: this.folderPath,
-      cmd,
-    });
-  }
-
-  runCommandWithOutput(cmd: string[]) {
-    return runCommandWithOutput({
-      cwd: this.folderPath,
-      cmd,
-    });
+  command(command: string | string[]) {
+    return new dax.CommandBuilder()
+      .command(command)
+      .cwd(this.folderPath);
   }
 
   async #updateManifestFile(action: (fileText: string) => string) {

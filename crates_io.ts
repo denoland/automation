@@ -1,4 +1,5 @@
 // Copyright 2018-2022 the Deno authors. All rights reserved. MIT license.
+import { $ } from "./deps.ts";
 
 export interface CratesIoMetadata {
   crate: {
@@ -15,15 +16,7 @@ export async function getCratesIoMetadata(crateName: string) {
   // rate limit
   await new Promise((resolve) => setTimeout(resolve, 100));
 
-  const response = await fetch(`https://crates.io/api/v1/crates/${crateName}`);
-  if (response.status === 404) {
-    return undefined;
-  }
-  if (!response.ok) {
-    console.error(`Error getting data for ${crateName}`);
-    throw new Error(response.statusText);
-  }
-  const data = await response.json();
-
-  return data as CratesIoMetadata;
+  return await $.request(`https://crates.io/api/v1/crates/${crateName}`)
+    .noThrow(404)
+    .json<CratesIoMetadata | undefined>();
 }
