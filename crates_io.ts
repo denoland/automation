@@ -16,6 +16,13 @@ export async function getCratesIoMetadata(crateName: string) {
   await new Promise((resolve) => setTimeout(resolve, 100));
 
   const response = await fetch(`https://crates.io/api/v1/crates/${crateName}`);
+  if (response.status === 404) {
+    return undefined;
+  }
+  if (!response.ok) {
+    console.error(`Error getting data for ${crateName}`);
+    throw new Error(response.statusText);
+  }
   const data = await response.json();
 
   return data as CratesIoMetadata;

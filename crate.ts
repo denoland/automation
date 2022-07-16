@@ -199,15 +199,24 @@ export class Crate {
     return dependencies;
   }
 
+  /** Gets if published or not, returning undefined if it was never published. */
   async isPublished() {
     const cratesIoMetadata = await getCratesIoMetadata(this.name);
+    if (cratesIoMetadata == null) {
+      return undefined;
+    }
     return cratesIoMetadata.versions.some((v) =>
       v.num === this.version.toString()
     );
   }
 
   async publish(...additionalArgs: string[]) {
-    if (await this.isPublished()) {
+    const isPublished = await this.isPublished();
+    if (isPublished == null) {
+      console.log(`Never published, so skipping ${this.name} ${this.version}`);
+      return false;
+    }
+    if (isPublished) {
       console.log(`Already published ${this.name} ${this.version}`);
       return false;
     }
