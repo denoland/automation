@@ -70,18 +70,18 @@ if (repoTags.has(tagName)) {
   console.log(`Tag ${tagName} already exists.`);
 } else {
   if (cliArgs.publish) {
-    $.logTitle(`Publishing ${tagName}...`);
+    $.logStep(`Publishing ${tagName}...`);
     for (const crate of repo.getCratesPublishOrder()) {
       await crate.publish();
     }
   }
 
-  $.logTitle(`Tagging ${tagName}...`);
+  $.logStep(`Tagging ${tagName}...`);
   await repo.gitTag(tagName);
   await repo.gitPush("origin", tagName);
 
   if (cliArgs.release) {
-    $.logTitle("Creating release...");
+    $.logStep("Creating release...");
     const previousTag = repoTags.getPreviousVersionTag(mainCrate.version);
     const gitLog = await repo.getGitLogFromTags("origin", previousTag, tagName);
     await octokit.request(`POST /repos/{owner}/{repo}/releases`, {

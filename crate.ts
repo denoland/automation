@@ -73,7 +73,7 @@ export class Crate {
   }
 
   async setVersion(version: string) {
-    $.logTitle(`Setting ${this.name} to ${version}...`);
+    $.logStep(`Setting ${this.name} to ${version}...`);
     for (const crate of this.repo.crates) {
       await crate.setDependencyVersion(this.name, version);
     }
@@ -215,7 +215,7 @@ export class Crate {
       return false;
     }
 
-    $.logTitle(`Publishing ${this.name} ${this.version}...`);
+    $.logStep(`Publishing ${this.name} ${this.version}...`);
 
     // Sometimes a publish may fail due to the crates.io index
     // not being updated yet. Usually it will be resolved after
