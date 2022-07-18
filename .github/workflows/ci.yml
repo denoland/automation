@@ -16,3 +16,4 @@ jobs:
         deno-version: 1.x
     - run: deno lint
     - run: deno fmt --check
+    - run: deno check mod.ts tasks/release_on_crate_version_change.ts github_actions.ts

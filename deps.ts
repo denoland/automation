@@ -1,4 +1,5 @@
 // Copyright 2018-2022 the Deno authors. All rights reserved. MIT license.
 
-export * as path from "https://deno.land/std@0.127.0/path/mod.ts";
 export * as semver from "https://deno.land/x/semver@v1.4.0/mod.ts";
+export { default as $ } from "https://deno.land/x/dax@0.7.0/mod.ts";
+export * as dax from "https://deno.land/x/dax@0.7.0/mod.ts";

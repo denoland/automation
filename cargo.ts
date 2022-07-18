@@ -1,6 +1,6 @@
 // Copyright 2018-2022 the Deno authors. All rights reserved. MIT license.
 
-import { runCommand } from "./helpers.ts";
+import { $ } from "./deps.ts";
 
 export interface CargoMetadata {
   packages: CargoPackageMetadata[];
@@ -25,10 +25,8 @@ export interface CargoDependencyMetadata {
   req: string;
 }
 
-export async function getCargoMetadata(directory: string) {
-  const result = await runCommand({
-    cwd: directory,
-    cmd: ["cargo", "metadata", "--format-version", "1"],
-  });
-  return JSON.parse(result!) as CargoMetadata;
+export function getCargoMetadata(directory: string) {
+  return $`cargo metadata --format-version 1`
+    .cwd(directory)
+    .json<CargoMetadata>();
 }
