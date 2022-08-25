@@ -23,6 +23,7 @@ export interface CargoDependencyMetadata {
   name: string;
   /** Version requrement (ex. ^0.1.0) */
   req: string;
+  kind: "dev" | null;
 }
 
 export function getCargoMetadata(directory: string) {

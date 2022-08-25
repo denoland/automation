@@ -1,7 +1,7 @@
 /// Copyright 2018-2022 the Deno authors. All rights reserved. MIT license.
 
 import { CargoPackageMetadata, getCargoMetadata } from "./cargo.ts";
-import { Crate } from "./crate.ts";
+import { Crate, CrateDep } from "./crate.ts";
 import { $, dax } from "./deps.ts";
 import { GitLogOutput, GitTags } from "./helpers.ts";
 
@@ -278,20 +278,32 @@ export class Repo {
 }
 
 export function getCratesPublishOrder(crates: Iterable<Crate>) {
-  const pendingCrates = [...crates];
-  const sortedCrates = [];
+  const sortedCrates: ({ crate: Crate; deps: CrateDep[] })[] = [];
 
-  while (pendingCrates.length > 0) {
-    for (let i = pendingCrates.length - 1; i >= 0; i--) {
-      const crate = pendingCrates[i];
-      const hasPendingDependency = crate.descendantDependenciesInRepo()
-        .some((c) => pendingCrates.includes(c));
-      if (!hasPendingDependency) {
-        sortedCrates.push(crate);
-        pendingCrates.splice(i, 1);
-      }
-    }
+  for (const crate of crates) {
+    const deps = crate.immediateDependenciesInRepo();
+    const insertPos = getInsertPosition(crate, deps);
+    sortedCrates.splice(insertPos, 0, { crate, deps });
   }
 
-  return sortedCrates;
+  return sortedCrates.map((i) => i.crate);
+
+  function getInsertPosition(crate: Crate, crateDeps: CrateDep[]) {
+    for (let i = 0; i < sortedCrates.length; i++) {
+      const item = sortedCrates[i];
+      const crateItemDep = item.deps.find((d) => d.crate.name === crate.name);
+      if (crateItemDep != null) {
+        const depB = crateDeps.find((d) => d.crate.name === item.crate.name);
+        if (crateItemDep.isDev === depB?.isDev) {
+          throw new Error(
+            `Circular dependency found between ${crate.name} and ${item.crate.name}`,
+          );
+        }
+        if (depB == null || !crateItemDep.isDev) {
+          return i;
+        }
+      }
+    }
+    return sortedCrates.length;
+  }
 }
