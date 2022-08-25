@@ -46,6 +46,8 @@
 //   uses: actions/checkout@v3
 //   with:
 //     token: ${{ secrets.DENOBOT_PAT }}
+// - uses: denoland/setup-deno@v1
+// - uses: dtolnay/rust-toolchain@stable
 // - name: Release on Version Change
 //   env:
 //     GITHUB_TOKEN: ${{ secrets.DENOBOT_PAT }} # ensure this account is excluded from pushing to main
