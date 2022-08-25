@@ -42,13 +42,21 @@
 //
 // Then in your steps:
 // ```yml
+// - name: Clone repository
+//   uses: actions/checkout@v2
+//   with:
+//     token: ${{ secrets.DENOBOT_PAT }}
 // - name: Release on Version Change
 //   env:
-//     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # ensure this account is excluded from pushing to main
+//     GITHUB_TOKEN: ${{ secrets.DENOBOT_PAT }} # ensure this account is excluded from pushing to main
+//     GH_WORKFLOW_ACTOR: ${{ github.actor }}
 //   if: |
 //     github.repository == 'denoland/<REPO_NAME_GOES_HERE>' &&
 //     github.ref == 'refs/heads/main'
-//   run: deno run -A --no-check <url-to-this-module> --${{github.event.inputs.releaseKind}}
+//   run: |
+//     git config user.email "${{ github.actor }}@users.noreply.github.com"
+//     git config user.name "${{ github.actor }}"
+//     deno run -A <url-to-this-module> --${{github.event.inputs.releaseKind}}
 // ```
 
 import { $, Repo } from "../mod.ts";
