@@ -299,7 +299,7 @@ export function getCratesPublishOrder(crates: Iterable<Crate>) {
             `Circular dependency found between ${crate.name} and ${item.crate.name}`,
           );
         }
-        if (!crateItemDep.isDev) {
+        if (depB == null || !crateItemDep.isDev) {
           return i;
         }
       }
