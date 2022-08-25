@@ -85,9 +85,9 @@ for (const crate of repo.crates) {
   await crate.increment(cliArgs.kind);
 }
 
-// run a cargo check on everything in order to update the lockfiles
+// run a cargo update on everything in order to update the lockfile
 for (const crate of repo.crates) {
-  await crate.cargoCheck();
+  await crate.cargoUpdate("--workspace");
 }
 
 // now get the tag name to use based on the previous tags

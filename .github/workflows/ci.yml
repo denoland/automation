@@ -16,4 +16,4 @@ jobs:
         deno-version: 1.x
     - run: deno lint
     - run: deno fmt --check
-    - run: deno check mod.ts tasks/publish_release.ts github_actions.ts
+    - run: deno check mod.ts tasks/publish_release.ts tasks/bump_deno_deps.ts github_actions.ts

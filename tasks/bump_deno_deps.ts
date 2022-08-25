@@ -58,8 +58,16 @@ for (const crate of repo.crates) {
       updates.add(`${dep.name} ${latestVersion}`);
     }
   }
+  await crate.cargoUpdate("--workspace");
 }
 $.logGroupEnd();
+
+$.logStep(`Attempting to run "deno task build" if exists...`);
+try {
+  await $`deno task build`;
+} catch (err) {
+  $.logWarn("Warning", "Either build task failed or it did not exist.", err);
+}
 
 $.logStep(`Committing...`);
 const originalBranch = await repo.gitCurrentBranch();
