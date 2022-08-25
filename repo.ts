@@ -284,7 +284,7 @@ export function getCratesPublishOrder(crates: Iterable<Crate>) {
   while (pendingCrates.length > 0) {
     for (let i = pendingCrates.length - 1; i >= 0; i--) {
       const crate = pendingCrates[i];
-      const hasPendingDependency = crate.descendantDependenciesInRepo()
+      const hasPendingDependency = crate.descendantNonDevDependenciesInRepo()
         .some((c) => pendingCrates.includes(c));
       if (!hasPendingDependency) {
         sortedCrates.push(crate);

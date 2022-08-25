@@ -166,16 +166,17 @@ export class Crate {
     });
   }
 
-  /** Gets all the descendant dependencies in the repository. */
-  descendantDependenciesInRepo() {
+  /** Gets all the descendant non dev dependencies in the repository. */
+  descendantNonDevDependenciesInRepo() {
     // try to maintain publish order.
     const crates = new Map<string, Crate>();
     const stack = [...this.immediateDependenciesInRepo()];
     while (stack.length > 0) {
       const item = stack.pop()!;
-      if (!crates.has(item.name)) {
-        crates.set(item.name, item);
-        stack.push(...item.immediateDependenciesInRepo());
+      const crate = item.crate;
+      if (item.kind !== "dev" && !crates.has(crate.name)) {
+        crates.set(crate.name, crate);
+        stack.push(...crate.immediateDependenciesInRepo());
       }
     }
     return Array.from(crates.values());
@@ -187,7 +188,10 @@ export class Crate {
     for (const dependency of this.#pkg.dependencies) {
       const crate = this.repo.crates.find((c) => c.name === dependency.name);
       if (crate != null) {
-        dependencies.push(crate);
+        dependencies.push({
+          kind: dependency.kind,
+          crate,
+        });
       }
     }
     return dependencies;
