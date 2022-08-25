@@ -2,11 +2,7 @@
 
 // # Overview
 //
-// Automatically tags and releases the repo with a "version tag" when the version
-// of the repo's crate or specified crate changes when merged to main. For example,
-// say you have version 1.1.0 tagged and you merge in a commit to main that changes
-// the version in Cargo.toml to 1.1.1... this would detect that and tag the repo
-// with 1.1.1.
+// Bumps the version, tags, and releases the repo.
 //
 // Note: this will detect whether to add a `v` prefix or not based on the most recent
 // version tag.
@@ -17,26 +13,45 @@
 // to use to determine the tag name as an argument to the script.
 //
 // ```bash
-// deno run -A --no-check <url-to-this-module> <crate-name-goes-here>
+// deno run -A --no-check <url-to-this-module> --minor <crate-name-goes-here>
 // ```
 //
 // Flags:
-// - `--publish` - Publishes all the unpublished crates in the repo to crates.io
+// - `--major` - Do a major release
+// - `--minor` - Do a minor release
+// - `--patch` - Do a patch release
 // - `--skip-release` - Skips doing a GitHub release.
 //
 // # Example Use
 //
+// Add some inputs to the workflow:
+// ```yml
+// on:
+//   workflow_dispatch:
+//     inputs:
+//       releaseKind:
+//         description: 'Kind of release'
+//         default: 'minor'
+//         type: choice
+//         options:
+//         - patch
+//         - minor
+//         - major
+//         required: true
+// ```
+//
+// Then in your steps:
 // ```yml
 // - name: Release on Version Change
 //   env:
-//     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+//     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # ensure this account is excluded from pushing to main
 //   if: |
 //     github.repository == 'denoland/<REPO_NAME_GOES_HERE>' &&
 //     github.ref == 'refs/heads/main'
-//    run: deno run -A --no-check <url-to-this-module>
+//   run: deno run -A --no-check <url-to-this-module> --${{github.event.inputs.releaseKind}}
 // ```
 
-import { $, containsVersion, Repo } from "../mod.ts";
+import { $, Repo } from "../mod.ts";
 import { createOctoKit, getGitHubRepository } from "../github_actions.ts";
 
 const cliArgs = getCliArgs();
@@ -49,49 +64,51 @@ const repo = await Repo.load({
 
 const octokit = createOctoKit();
 
-// only run this for commits that contain a version number in the commit message
-if (!containsVersion(await repo.gitCurrentCommitMessage())) {
-  console.log("Exiting: No version found in commit name.");
-  Deno.exit();
-}
-
 // safeguard for in case if someone doesn't run this on the main branch
 if ((await repo.gitCurrentBranch()) !== "main") {
   console.log("Exiting: Not on main branch.");
   Deno.exit();
 }
 
-// now ensure this tag exists
+// bump the versions
+for (const crate of repo.crates) {
+  if (crate.version === "0.0.0") {
+    continue; // skip
+  }
+  await crate.increment(cliArgs.kind);
+}
+
+// run a cargo check on everything in order to update the lockfiles
+for (const crate of repo.crates) {
+  await crate.cargoCheck();
+}
+
+// now get the tag name to use based on the previous tags
 const mainCrate = getMainCrate();
 await repo.gitFetchTags("origin");
 const repoTags = await repo.getGitTags();
 const tagName = repoTags.getTagNameForVersion(mainCrate.version);
-if (repoTags.has(tagName)) {
-  console.log(`Tag ${tagName} already exists.`);
-} else {
-  if (cliArgs.publish) {
-    $.logStep(`Publishing ${tagName}...`);
-    for (const crate of repo.getCratesPublishOrder()) {
-      await crate.publish();
-    }
-  }
 
-  $.logStep(`Tagging ${tagName}...`);
-  await repo.gitTag(tagName);
-  await repo.gitPush("origin", tagName);
+$.logStep(`Committing...`);
+await repo.gitAdd();
+await repo.gitCommit(tagName);
+await repo.gitPush();
 
-  if (cliArgs.release) {
-    $.logStep("Creating release...");
-    const previousTag = repoTags.getPreviousVersionTag(mainCrate.version);
-    const gitLog = await repo.getGitLogFromTags("origin", previousTag, tagName);
-    await octokit.request(`POST /repos/{owner}/{repo}/releases`, {
-      ...getGitHubRepository(),
-      tag_name: tagName,
-      name: tagName,
-      body: gitLog.formatForReleaseMarkdown(),
-      draft: false,
-    });
-  }
+$.logStep(`Tagging ${tagName}...`);
+await repo.gitTag(tagName);
+await repo.gitPush("origin", tagName);
+
+if (cliArgs.release) {
+  $.logStep("Creating release...");
+  const previousTag = repoTags.getPreviousVersionTag(mainCrate.version);
+  const gitLog = await repo.getGitLogFromTags("origin", previousTag, tagName);
+  await octokit.request(`POST /repos/{owner}/{repo}/releases`, {
+    ...getGitHubRepository(),
+    tag_name: tagName,
+    name: tagName,
+    body: gitLog.formatForReleaseMarkdown(),
+    draft: false,
+  });
 }
 
 /** Gets the crate to pull the version from. */
@@ -109,20 +126,24 @@ function getMainCrate() {
 
 interface CliArgs {
   crate: string | undefined;
-  publish: boolean;
+  kind: "major" | "minor" | "patch";
   release: boolean;
 }
 
 function getCliArgs() {
   // very basic arg parsing... should improve later
   const args: CliArgs = {
-    publish: false,
+    kind: "patch",
     release: true,
     crate: undefined,
   };
   for (const arg of Deno.args) {
-    if (arg === "--publish") {
-      args.publish = true;
+    if (arg === "--major") {
+      args.kind = "major";
+    } else if (arg === "--minor") {
+      args.kind = "minor";
+    } else if (arg === "--patch") {
+      args.kind = "patch";
     } else if (arg === "--skip-release") {
       args.release = false;
     } else if (arg.startsWith("--")) {
