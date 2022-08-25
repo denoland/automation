@@ -174,7 +174,7 @@ export class Crate {
     while (stack.length > 0) {
       const item = stack.pop()!;
       const crate = item.crate;
-      if (item.kind !== "dev" && !crates.has(crate.name)) {
+      if (!item.isDev && !crates.has(crate.name)) {
         crates.set(crate.name, crate);
         stack.push(...crate.immediateDependenciesInRepo());
       }
@@ -189,7 +189,7 @@ export class Crate {
       const crate = this.repo.crates.find((c) => c.name === dependency.name);
       if (crate != null) {
         dependencies.push({
-          kind: dependency.kind,
+          isDev: dependency.kind === "dev",
           crate,
         });
       }
