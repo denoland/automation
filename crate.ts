@@ -89,7 +89,7 @@ export class Crate {
     const dependency = this.#pkg.dependencies.find((d) =>
       d.name === dependencyName
     );
-    if (dependency != null) {
+    if (dependency != null && dependency.req !== "*") {
       await this.#updateManifestFile((fileText) => {
         // simple for now...
         const findRegex = new RegExp(
