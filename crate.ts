@@ -5,6 +5,11 @@ import type { Repo } from "./repo.ts";
 import { CargoPackageMetadata } from "./cargo.ts";
 import { getCratesIoMetadata } from "./crates_io.ts";
 
+export interface CrateDep {
+  isDev: boolean;
+  crate: Crate;
+}
+
 export class Crate {
   #pkg: CargoPackageMetadata;
   #isUpdatingManifest = false;
@@ -166,15 +171,14 @@ export class Crate {
     });
   }
 
-  /** Gets all the descendant non dev dependencies in the repository. */
-  descendantNonDevDependenciesInRepo() {
+  /** Gets all the descendant dependencies in the repository. */
+  descendantDependenciesInRepo() {
     // try to maintain publish order.
     const crates = new Map<string, Crate>();
     const stack = [...this.immediateDependenciesInRepo()];
     while (stack.length > 0) {
-      const item = stack.pop()!;
-      const crate = item.crate;
-      if (!item.isDev && !crates.has(crate.name)) {
+      const { crate } = stack.pop()!;
+      if (!crates.has(crate.name)) {
         crates.set(crate.name, crate);
         stack.push(...crate.immediateDependenciesInRepo());
       }
@@ -184,7 +188,7 @@ export class Crate {
 
   /** Gets the immediate child dependencies found in the repo. */
   immediateDependenciesInRepo() {
-    const dependencies = [];
+    const dependencies: CrateDep[] = [];
     for (const dependency of this.#pkg.dependencies) {
       const crate = this.repo.crates.find((c) => c.name === dependency.name);
       if (crate != null) {
