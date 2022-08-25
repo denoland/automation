@@ -43,7 +43,7 @@
 // Then in your steps:
 // ```yml
 // - name: Clone repository
-//   uses: actions/checkout@v2
+//   uses: actions/checkout@v3
 //   with:
 //     token: ${{ secrets.DENOBOT_PAT }}
 // - name: Release on Version Change
