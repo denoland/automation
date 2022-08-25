@@ -52,9 +52,6 @@
 //   env:
 //     GITHUB_TOKEN: ${{ secrets.DENOBOT_PAT }} # ensure this account is excluded from pushing to main
 //     GH_WORKFLOW_ACTOR: ${{ github.actor }}
-//   if: |
-//     github.repository == 'denoland/<REPO_NAME_GOES_HERE>' &&
-//     github.ref == 'refs/heads/main'
 //   run: |
 //     git config user.email "${{ github.actor }}@users.noreply.github.com"
 //     git config user.name "${{ github.actor }}"
@@ -102,7 +99,9 @@ const tagName = repoTags.getTagNameForVersion(mainCrate.version);
 $.logStep(`Committing...`);
 await repo.gitAdd();
 await repo.gitCommit(tagName);
-await repo.gitPush();
+
+$.logStep("Pushing to main...");
+await repo.gitPush("-u", "origin", "HEAD");
 
 $.logStep(`Tagging ${tagName}...`);
 await repo.gitTag(tagName);
