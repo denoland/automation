@@ -2,7 +2,7 @@
 
 import { $, dax, semver } from "./deps.ts";
 import type { Repo } from "./repo.ts";
-import { CargoPackageMetadata } from "./cargo.ts";
+import { CargoDependencyMetadata, CargoPackageMetadata } from "./cargo.ts";
 import { getCratesIoMetadata } from "./crates_io.ts";
 
 export interface CrateDep {
@@ -38,6 +38,10 @@ export class Crate {
 
   get version() {
     return this.#pkg.version;
+  }
+
+  get dependencies() {
+    return this.#pkg.dependencies as readonly CargoDependencyMetadata[];
   }
 
   /** Prompts the user how they would like to patch and increments the version accordingly. */
