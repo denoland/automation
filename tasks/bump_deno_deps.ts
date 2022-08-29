@@ -14,9 +14,9 @@
 //     token: ${{ secrets.DENOBOT_PAT }}
 // - uses: denoland/setup-deno@v1
 // - uses: dtolnay/rust-toolchain@stable
-// - name: Release on Version Change
+// - name: Bump dependencies
 //   env:
-//     GITHUB_TOKEN: ${{ secrets.DENOBOT_PAT }} # ensure this account is excluded from pushing to main
+//     GITHUB_TOKEN: ${{ secrets.DENOBOT_PAT }}
 //     GH_WORKFLOW_ACTOR: ${{ github.actor }}
 //   run: |
 //     git config user.email "${{ github.actor }}@users.noreply.github.com"
@@ -62,6 +62,7 @@ for (const crate of repo.crates) {
 }
 $.logGroupEnd();
 
+// todo: ideally this would detect if the tasks exists and error on failure
 $.logStep(`Attempting to run "deno task build" if exists...`);
 try {
   await $`deno task build`;
