@@ -48,7 +48,7 @@
 //     token: ${{ secrets.DENOBOT_PAT }}
 // - uses: denoland/setup-deno@v1
 // - uses: dtolnay/rust-toolchain@stable
-// - name: Release on Version Change
+// - name: Publish
 //   env:
 //     GITHUB_TOKEN: ${{ secrets.DENOBOT_PAT }} # ensure this account is excluded from pushing to main
 //     GH_WORKFLOW_ACTOR: ${{ github.actor }}
@@ -88,6 +88,14 @@ for (const crate of repo.crates) {
 // run a cargo update on everything in order to update the lockfile
 for (const crate of repo.crates) {
   await crate.cargoUpdate("--workspace");
+}
+
+// todo(dsherret): ideally this would detect if the tasks exists and error on failure
+$.logStep(`Attempting to run "deno task build" if exists...`);
+try {
+  await $`deno task build`;
+} catch (err) {
+  $.logWarn("Warning", "Either build task failed or it did not exist.", err);
 }
 
 // now get the tag name to use based on the previous tags
