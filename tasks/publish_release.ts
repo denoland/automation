@@ -90,7 +90,7 @@ for (const crate of repo.crates) {
   await crate.cargoUpdate("--workspace");
 }
 
-// todo: ideally this would detect if the tasks exists and error on failure
+// todo(dsherret): ideally this would detect if the tasks exists and error on failure
 $.logStep(`Attempting to run "deno task build" if exists...`);
 try {
   await $`deno task build`;
