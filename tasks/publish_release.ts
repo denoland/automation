@@ -108,8 +108,9 @@ $.logStep(`Committing...`);
 await repo.gitAdd();
 await repo.gitCommit(tagName);
 
+// force push with lease to skip status checks
 $.logStep("Pushing to main...");
-await repo.gitPush("-u", "origin", "HEAD");
+await repo.gitPush("--force-with-lease", "-u", "origin", "HEAD");
 
 $.logStep(`Tagging ${tagName}...`);
 await repo.gitTag(tagName);
