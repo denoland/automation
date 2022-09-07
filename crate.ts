@@ -89,6 +89,11 @@ export class Crate {
     await this.#updateManifestVersion(version);
   }
 
+  /** Gets the latest version from crates.io or returns undefined if not exists. */
+  async getLatestVersion() {
+    return (await getCratesIoMetadata(this.name))?.crate.max_stable_version;
+  }
+
   async setDependencyVersion(dependencyName: string, version: string) {
     const dependency = this.#pkg.dependencies.find((d) =>
       d.name === dependencyName
