@@ -92,19 +92,22 @@ export class Crate {
 
     const metadata = await getCargoMetadata(this.repo.folderPath);
     const rootpath = $.path.join(metadata.workspace_root, "Cargo.toml");
-    const originalText = await Deno.readTextFile(rootpath);
-    const findRegex = new RegExp(
-      `^(\\b${this.name}\\b\\s.*)"([=\\^])?[0-9]+[^"]+"`,
-      "gm",
-    );
 
-    if (findRegex.test(originalText)) {
-      const newText = originalText.replace(findRegex, `$1"${version}"`);
+    if (this.repo.folderPath === metadata.workspace_root) {
+      const originalText = await Deno.readTextFile(rootpath);
+      const findRegex = new RegExp(
+        `^(\\b${this.name}\\b\\s.*)"([=\\^])?[0-9]+[^"]+"`,
+        "gm",
+      );
 
-      if (originalText === newText) {
-        throw new Error(`The file didn't change: ${rootpath}`);
+      if (findRegex.test(originalText)) {
+        const newText = originalText.replace(findRegex, `$1"${version}"`);
+
+        if (originalText === newText) {
+          throw new Error(`The file didn't change: ${rootpath}`);
+        }
+        await Deno.writeTextFile(rootpath, newText);
       }
-      await Deno.writeTextFile(rootpath, newText);
     }
 
     await this.#updateManifestVersion(version);
