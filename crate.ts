@@ -88,10 +88,8 @@ export class Crate {
   async setVersion(version: string) {
     $.logStep(`Setting ${this.name} to ${version}...`);
 
-    const metadata = await getCargoMetadata(this.repo.folderPath);
-    const rootpath = $.path.join(metadata.workspace_root, "Cargo.toml");
-
-    if (this.repo.folderPath === metadata.workspace_root) {
+    if (this.repo.folderPath !== this.folderPath) {
+      const rootpath = $.path.join(this.repo.folderPath, "Cargo.toml");
       const originalText = await Deno.readTextFile(rootpath);
       const findRegex = new RegExp(
         `^(\\b${this.name}\\b\\s.*)"([=\\^])?[0-9]+[^"]+"`,
