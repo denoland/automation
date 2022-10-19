@@ -83,9 +83,22 @@ export class Crate {
 
   async setVersion(version: string) {
     $.logStep(`Setting ${this.name} to ${version}...`);
-    for (const crate of this.repo.crates) {
-      await crate.setDependencyVersion(this.name, version);
+
+    // sets the version of any usages of this crate in the root Cargo.toml
+    if (this.repo.folderPath !== this.folderPath) {
+      const rootpath = $.path.join(this.repo.folderPath, "Cargo.toml");
+      const originalText = await Deno.readTextFile(rootpath);
+      const findRegex = new RegExp(
+        `^(\\b${this.name}\\b\\s.*)"([=\\^])?[0-9]+[^"]+"`,
+        "gm",
+      );
+
+      const newText = originalText.replace(findRegex, `$1"${version}"`);
+      if (originalText !== newText) {
+        await Deno.writeTextFile(rootpath, newText);
+      }
     }
+
     await this.#updateManifestVersion(version);
   }
 
