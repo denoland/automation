@@ -84,6 +84,7 @@ export class Crate {
   async setVersion(version: string) {
     $.logStep(`Setting ${this.name} to ${version}...`);
 
+    // sets the version of any usages of this crate in the root Cargo.toml
     if (this.repo.folderPath !== this.folderPath) {
       const rootpath = $.path.join(this.repo.folderPath, "Cargo.toml");
       const originalText = await Deno.readTextFile(rootpath);
@@ -92,12 +93,8 @@ export class Crate {
         "gm",
       );
 
-      if (findRegex.test(originalText)) {
-        const newText = originalText.replace(findRegex, `$1"${version}"`);
-
-        if (originalText === newText) {
-          throw new Error(`The file didn't change: ${rootpath}`);
-        }
+      const newText = originalText.replace(findRegex, `$1"${version}"`);
+      if (originalText !== newText) {
         await Deno.writeTextFile(rootpath, newText);
       }
     }
