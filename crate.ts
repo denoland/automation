@@ -14,8 +14,6 @@ export interface CrateDep {
   crate: Crate;
 }
 
-let i = 0;
-
 export class Crate {
   #pkg: CargoPackageMetadata;
   #isUpdatingManifest = false;
