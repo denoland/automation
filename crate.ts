@@ -2,11 +2,7 @@
 
 import { $, dax, semver } from "./deps.ts";
 import type { Repo } from "./repo.ts";
-import {
-  CargoDependencyMetadata,
-  CargoPackageMetadata,
-  getCargoMetadata,
-} from "./cargo.ts";
+import { CargoDependencyMetadata, CargoPackageMetadata } from "./cargo.ts";
 import { getCratesIoMetadata } from "./crates_io.ts";
 
 export interface CrateDep {
