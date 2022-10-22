@@ -96,6 +96,12 @@ export class Crate {
       const newText = originalText.replace(findRegex, `$1"${version}"`);
       if (originalText !== newText) {
         await Deno.writeTextFile(rootpath, newText);
+      } else {
+        // in this case, the repo does not keep the version
+        // inside the root cargo.toml file
+        for (const crate of this.repo.crates) {
+          await crate.setDependencyVersion(this.name, version);
+        }
       }
     }
 
