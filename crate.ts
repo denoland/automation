@@ -1,4 +1,4 @@
-// Copyright 2018-2022 the Deno authors. All rights reserved. MIT license.
+// Copyright 2018-2023 the Deno authors. All rights reserved. MIT license.
 
 import { $, dax, semver } from "./deps.ts";
 import type { Repo } from "./repo.ts";
@@ -77,7 +77,7 @@ export class Crate {
   }
 
   increment(part: "major" | "minor" | "patch") {
-    const newVersion = semver.parse(this.version)!.inc(part).toString();
+    const newVersion = semver.parse(this.version)!.increment(part).toString();
     return this.setVersion(newVersion);
   }
 
