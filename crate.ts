@@ -13,6 +13,7 @@ export interface CrateDep {
 export class Crate {
   #pkg: CargoPackageMetadata;
   #isUpdatingManifest = false;
+  #isUpdatingRootManifest = false;
 
   constructor(
     public readonly repo: Repo,
@@ -118,7 +119,7 @@ export class Crate {
       d.name === dependencyName
     );
     if (dependency != null && dependency.req !== "*") {
-      await this.#updateManifestFile((fileText) => {
+      await this.#updateManifestFile((_filePath, fileText) => {
         // simple for now...
         const findRegex = new RegExp(
           `^(\\b${dependencyName}\\b\\s.*)"([=\\^])?[0-9]+[^"]+"`,
@@ -132,7 +133,7 @@ export class Crate {
   }
 
   async #updateManifestVersion(version: string) {
-    await this.#updateManifestFile((fileText) => {
+    await this.#updateManifestFile((_filePath, fileText) => {
       const findRegex = new RegExp(
         `^(version\\s*=\\s*)"${this.#pkg.version}"$`,
         "m",
@@ -143,59 +144,22 @@ export class Crate {
   }
 
   toLocalSource(crate: Crate) {
-    return this.#updateManifestFile((fileText) => {
-      const relativePath = $.path.relative(this.folderPath, crate.folderPath)
+    return this.#updateRootManifestFile((filePath, fileText) => {
+      const relativePath = $.path.relative(filePath, crate.folderPath)
         .replace(/\\/g, "/");
-      // try to replace if it had a property in the object
-      const versionPropRegex = new RegExp(
-        `^(${crate.name}\\b\\s.*)version\\s*=\\s*"[^"]+"`,
-        "m",
-      );
-      const newFileText = fileText.replace(
-        versionPropRegex,
-        `$1path = "${relativePath}"`,
-      );
-      if (newFileText !== fileText) {
-        return newFileText;
-      }
-
-      // now try to find if it just had a version
-      const versionStringRegex = new RegExp(
-        `^(\\b${crate.name}\\b\\s.*)"([=\\^])?[0-9]+[^"]+"`,
-        "m",
-      );
-      return fileText.replace(
-        versionStringRegex,
-        `$1{ path = "${relativePath}" }`,
-      );
+      const newText =
+        `[patch.crates-io.${crate.name}]\npath = "${relativePath}"\n`;
+      return fileText + newText;
     });
   }
 
   revertLocalSource(crate: Crate) {
-    return this.#updateManifestFile((fileText) => {
-      const crateVersion = crate.version.toString();
-      // try to replace if it had a property in the object
-      const pathOnlyRegex = new RegExp(
-        `^${crate.name} = { path = "[^"]+" }$`,
-        "m",
-      );
-      const newFileText = fileText.replace(
-        pathOnlyRegex,
-        `${crate.name} = "${crateVersion}"`,
-      );
-      if (newFileText !== fileText) {
-        return newFileText;
-      }
-
-      // now try to find if it had a path in an object
-      const versionStringRegex = new RegExp(
-        `^(${crate.name}\\b\\s.*)path\\s*=\\s*"[^"]+"`,
-        "m",
-      );
-      return fileText.replace(
-        versionStringRegex,
-        `$1version = "${crateVersion}"`,
-      );
+    return this.#updateRootManifestFile((filePath, fileText) => {
+      const relativePath = $.path.relative(filePath, crate.folderPath)
+        .replace(/\\/g, "/");
+      const newText =
+        `[patch.crates-io.${crate.name}]\npath = "${relativePath}"\n`;
+      return fileText.replace(newText, "");
     });
   }
 
@@ -306,20 +270,53 @@ export class Crate {
       .cwd(this.folderPath);
   }
 
-  async #updateManifestFile(action: (fileText: string) => string) {
+  async #updateManifestFile(
+    action: (filePath: string, fileText: string) => string,
+  ) {
     if (this.#isUpdatingManifest) {
       throw new Error("Cannot update manifest while updating manifest.");
     }
     this.#isUpdatingManifest = true;
     try {
-      const originalText = await Deno.readTextFile(this.manifestPath);
-      const newText = action(originalText);
-      if (originalText === newText) {
-        throw new Error(`The file didn't change: ${this.manifestPath}`);
-      }
-      await Deno.writeTextFile(this.manifestPath, newText);
+      await updateFileEnsureChange(this.manifestPath, action);
     } finally {
       this.#isUpdatingManifest = false;
     }
   }
+
+  async #updateRootManifestFile(
+    action: (filePath: string, fileText: string) => string,
+  ) {
+    const rootManifestFilePath = $.path.join(
+      this.repo.folderPath,
+      "Cargo.toml",
+    );
+    if (
+      this.manifestPath === rootManifestFilePath ||
+      !$.existsSync(rootManifestFilePath)
+    ) {
+      return this.#updateManifestFile(action);
+    }
+    if (this.#isUpdatingRootManifest) {
+      throw new Error("Cannot update root manifest while updating it.");
+    }
+    this.#isUpdatingRootManifest = true;
+    try {
+      await updateFileEnsureChange(rootManifestFilePath, action);
+    } finally {
+      this.#isUpdatingRootManifest = false;
+    }
+  }
+}
+
+async function updateFileEnsureChange(
+  filePath: string,
+  action: (filePath: string, fileText: string) => string,
+) {
+  const originalText = await Deno.readTextFile(filePath);
+  const newText = action(filePath, originalText);
+  if (originalText === newText) {
+    throw new Error(`The file didn't change: ${filePath}`);
+  }
+  await Deno.writeTextFile(filePath, newText);
 }
