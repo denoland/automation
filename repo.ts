@@ -2,14 +2,14 @@
 
 import { CargoPackageMetadata, getCargoMetadata } from "./cargo.ts";
 import { Crate, CrateDep } from "./crate.ts";
-import { $, dax } from "./deps.ts";
+import { $, dax, PathRef } from "./deps.ts";
 import { GitLogOutput, GitTags } from "./helpers.ts";
 
 export interface RepoLoadOptions {
   /** Name of the repo. */
   name: string;
   /** Path to the directory of the repo on the local file system. */
-  path: string;
+  path: string | PathRef;
   /** Whether crates should not be loaded if a Cargo.toml exists
    * in the root of the repo. If no Cargo.toml exists, then it won't
    * load the crates anyway. */
@@ -21,17 +21,17 @@ export class Repo {
 
   private constructor(
     public readonly name: string,
-    public readonly folderPath: string,
+    public readonly folderPath: PathRef,
   ) {
   }
 
   static async load(options: RepoLoadOptions) {
-    const folderPath = $.path.resolve(options.path);
+    const folderPath = options.path instanceof PathRef ? options.path : $.path(options.path);
     const repo = new Repo(options.name, folderPath);
 
     if (
       !options.skipLoadingCrates &&
-      $.existsSync($.path.join(folderPath, "Cargo.toml"))
+      folderPath.join("Cargo.toml").existsSync()
     ) {
       await repo.loadCrates();
     }
@@ -60,8 +60,8 @@ export class Repo {
   }
 
   async loadCrateInSubDir(name: string, subDir: string) {
-    subDir = $.path.join(this.folderPath, subDir);
-    const metadata = await getCargoMetadata(subDir);
+    const subDirPath = this.folderPath.join(subDir);
+    const metadata = await getCargoMetadata(subDirPath);
     const pkg = metadata.packages.find((pkg) => pkg.name === name);
     if (!pkg) {
       throw new Error(`Could not find package with name ${name}`);

@@ -1,6 +1,6 @@
 // Copyright 2018-2023 the Deno authors. All rights reserved. MIT license.
 
-import { $, dax, semver } from "./deps.ts";
+import { $, dax, PathRef, semver } from "./deps.ts";
 import type { Repo } from "./repo.ts";
 import { CargoDependencyMetadata, CargoPackageMetadata } from "./cargo.ts";
 import { getCratesIoMetadata } from "./crates_io.ts";
@@ -19,18 +19,19 @@ export class Crate {
     public readonly repo: Repo,
     crateMetadata: CargoPackageMetadata,
   ) {
-    if (!$.existsSync(crateMetadata.manifest_path)) {
+    const manifestPath = $.path(crateMetadata.manifest_path);
+    if (!manifestPath.existsSync()) {
       throw new Error(`Could not find crate at ${crateMetadata.manifest_path}`);
     }
     this.#pkg = crateMetadata;
   }
 
   get manifestPath() {
-    return this.#pkg.manifest_path;
+    return $.path(this.#pkg.manifest_path);
   }
 
   get folderPath() {
-    return $.path.dirname(this.#pkg.manifest_path);
+    return this.manifestPath.parentOrThrow();
   }
 
   get name() {
@@ -86,9 +87,9 @@ export class Crate {
     $.logStep(`Setting ${this.name} to ${version}...`);
 
     // sets the version of any usages of this crate in the root Cargo.toml
-    if (this.repo.folderPath !== this.folderPath) {
-      const rootpath = $.path.join(this.repo.folderPath, "Cargo.toml");
-      const originalText = await Deno.readTextFile(rootpath);
+    if (!this.repo.folderPath.equals(this.folderPath)) {
+      const rootpath = this.repo.folderPath.join("Cargo.toml");
+      const originalText = await rootpath.readText();
       const findRegex = new RegExp(
         `^(\\b${this.name}\\b\\s.*)"([=\\^])?[0-9]+[^"]+"`,
         "gm",
@@ -96,7 +97,7 @@ export class Crate {
 
       const newText = originalText.replace(findRegex, `$1"${version}"`);
       if (originalText !== newText) {
-        await Deno.writeTextFile(rootpath, newText);
+        await rootpath.writeText(newText);
       } else {
         // in this case, the repo does not keep the version
         // inside the root cargo.toml file
@@ -145,7 +146,7 @@ export class Crate {
 
   toLocalSource(crate: Crate) {
     return this.#updateRootManifestFile((filePath, fileText) => {
-      const relativePath = $.path.relative(filePath, crate.folderPath)
+      const relativePath = filePath.relative(crate.folderPath)
         .replace(/\\/g, "/");
       const newText =
         `[patch.crates-io.${crate.name}]\npath = "${relativePath}"\n`;
@@ -155,7 +156,7 @@ export class Crate {
 
   revertLocalSource(crate: Crate) {
     return this.#updateRootManifestFile((filePath, fileText) => {
-      const relativePath = $.path.relative(filePath, crate.folderPath)
+      const relativePath = filePath.relative(crate.folderPath)
         .replace(/\\/g, "/");
       const newText =
         `[patch.crates-io.${crate.name}]\npath = "${relativePath}"\n`;
@@ -271,7 +272,7 @@ export class Crate {
   }
 
   async #updateManifestFile(
-    action: (filePath: string, fileText: string) => string,
+    action: (filePath: PathRef, fileText: string) => string,
   ) {
     if (this.#isUpdatingManifest) {
       throw new Error("Cannot update manifest while updating manifest.");
@@ -285,15 +286,12 @@ export class Crate {
   }
 
   async #updateRootManifestFile(
-    action: (filePath: string, fileText: string) => string,
+    action: (filePath: PathRef, fileText: string) => string,
   ) {
-    const rootManifestFilePath = $.path.join(
-      this.repo.folderPath,
-      "Cargo.toml",
-    );
+    const rootManifestFilePath = this.repo.folderPath.join("Cargo.toml");
     if (
-      this.manifestPath === rootManifestFilePath ||
-      !$.existsSync(rootManifestFilePath)
+      this.manifestPath.equals(rootManifestFilePath) ||
+      !rootManifestFilePath.existsSync()
     ) {
       return this.#updateManifestFile(action);
     }
@@ -310,13 +308,13 @@ export class Crate {
 }
 
 async function updateFileEnsureChange(
-  filePath: string,
-  action: (filePath: string, fileText: string) => string,
+  filePath: PathRef,
+  action: (filePath: PathRef, fileText: string) => string,
 ) {
-  const originalText = await Deno.readTextFile(filePath);
+  const originalText = await filePath.readText();
   const newText = action(filePath, originalText);
   if (originalText === newText) {
     throw new Error(`The file didn't change: ${filePath}`);
   }
-  await Deno.writeTextFile(filePath, newText);
+  await filePath.writeText(newText);
 }
