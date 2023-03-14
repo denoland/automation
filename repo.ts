@@ -26,7 +26,9 @@ export class Repo {
   }
 
   static async load(options: RepoLoadOptions) {
-    const folderPath = options.path instanceof PathRef ? options.path : $.path(options.path);
+    const folderPath = options.path instanceof PathRef
+      ? options.path
+      : $.path(options.path);
     const repo = new Repo(options.name, folderPath);
 
     if (
