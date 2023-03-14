@@ -1,3 +1,5 @@
+// Copyright 2018-2023 the Deno authors. All rights reserved. MIT license.
+
 import { Octokit } from "https://cdn.skypack.dev/@octokit/core@3?dts";
 
 export function getGitHubRepository() {
