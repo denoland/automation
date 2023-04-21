@@ -146,7 +146,7 @@ export class Crate {
 
   toLocalSource(crate: Crate) {
     return this.#updateRootManifestFile((filePath, fileText) => {
-      const relativePath = filePath.relative(crate.folderPath)
+      const relativePath = filePath.parentOrThrow().relative(crate.folderPath)
         .replace(/\\/g, "/");
       const newText =
         `[patch.crates-io.${crate.name}]\npath = "${relativePath}"\n`;
