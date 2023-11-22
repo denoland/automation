@@ -62,8 +62,8 @@ import { $, Repo } from "../mod.ts";
 import { createOctoKit, getGitHubRepository } from "../github_actions.ts";
 
 const cliArgs = getCliArgs();
-const cwd = $.path.resolve(".");
-const repoName = $.path.basename(cwd);
+const cwd = $.path(".").resolve();
+const repoName = cwd.basename();
 const repo = await Repo.load({
   name: repoName,
   path: cwd,
