@@ -67,7 +67,7 @@ export class GitTags {
   /** Gets if the most recent version tag uses a `v` prefix. */
   usesVersionVPrefix() {
     const versionTags = this.getGitVersionTags();
-    versionTags.sort((a, b) => a.version.compare(b.version));
+    versionTags.sort((a, b) => semver.compare(a.version, b.version));
     const mostRecentTag = versionTags[versionTags.length - 1];
     return mostRecentTag?.name.startsWith("v") ?? false;
   }
@@ -89,8 +89,8 @@ export class GitTags {
     let previousVersion;
     for (const tagInfo of this.getGitVersionTags()) {
       const isGtPrevious = previousVersion == null ||
-        previousVersion.version.compare(tagInfo.version) < 0;
-      if (isGtPrevious && tagInfo.version.compare(v) < 0) {
+        semver.compare(previousVersion.version, tagInfo.version) < 0;
+      if (isGtPrevious && semver.compare(tagInfo.version, v) < 0) {
         previousVersion = tagInfo;
       }
     }
