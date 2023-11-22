@@ -24,7 +24,7 @@
 //     deno run -A <url-to-this-module>
 // ```
 
-import { $, Repo, Crate } from "../mod.ts";
+import { $, Crate, Repo } from "../mod.ts";
 import { createOctoKit, getGitHubRepository } from "../github_actions.ts";
 import { CratesIoCache } from "../crates_io.ts";
 
