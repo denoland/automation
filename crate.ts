@@ -12,8 +12,6 @@ export interface CrateDep {
 
 export class Crate {
   #pkg: CargoPackageMetadata;
-  #isUpdatingManifest = false;
-  #isUpdatingRootManifest = false;
 
   constructor(
     public readonly repo: Repo,
@@ -79,17 +77,19 @@ export class Crate {
   }
 
   increment(part: "major" | "minor" | "patch") {
-    const newVersion = semver.parse(this.version)!.increment(part).toString();
-    return this.setVersion(newVersion);
+    const newVersion = semver.format(
+      semver.increment(semver.parse(this.version), part),
+    );
+    this.setVersion(newVersion);
   }
 
-  async setVersion(version: string) {
+  setVersion(version: string) {
     $.logStep(`Setting ${this.name} to ${version}...`);
 
     // sets the version of any usages of this crate in the root Cargo.toml
     if (!this.repo.folderPath.equals(this.folderPath)) {
       const rootpath = this.repo.folderPath.join("Cargo.toml");
-      const originalText = await rootpath.readText();
+      const originalText = rootpath.readTextSync();
       const findRegex = new RegExp(
         `^(\\b${this.name}\\b\\s.*)"([=\\^])?[0-9]+[^"]+"`,
         "gm",
@@ -97,30 +97,34 @@ export class Crate {
 
       const newText = originalText.replace(findRegex, `$1"${version}"`);
       if (originalText !== newText) {
-        await rootpath.writeText(newText);
+        rootpath.writeTextSync(newText);
       } else {
         // in this case, the repo does not keep the version
         // inside the root cargo.toml file
         for (const crate of this.repo.crates) {
-          await crate.setDependencyVersion(this.name, version);
+          crate.setDependencyVersion(this.name, version);
         }
       }
     }
 
-    await this.#updateManifestVersion(version);
+    this.#updateManifestVersion(version);
+  }
+
+  static async getLatestVersion(crateName: string) {
+    return (await getCratesIoMetadata(crateName))?.crate.max_stable_version;
   }
 
   /** Gets the latest version from crates.io or returns undefined if not exists. */
-  async getLatestVersion() {
-    return (await getCratesIoMetadata(this.name))?.crate.max_stable_version;
+  getLatestVersion() {
+    return Crate.getLatestVersion(this.name);
   }
 
-  async setDependencyVersion(dependencyName: string, version: string) {
+  setDependencyVersion(dependencyName: string, version: string) {
     const dependency = this.#pkg.dependencies.find((d) =>
       d.name === dependencyName
     );
     if (dependency != null && dependency.req !== "*") {
-      await this.#updateManifestFile((_filePath, fileText) => {
+      this.#updateManifestFile((_filePath, fileText) => {
         // simple for now...
         const findRegex = new RegExp(
           `^(\\b${dependencyName}\\b\\s.*)"([=\\^])?[0-9]+[^"]+"`,
@@ -133,8 +137,8 @@ export class Crate {
     }
   }
 
-  async #updateManifestVersion(version: string) {
-    await this.#updateManifestFile((_filePath, fileText) => {
+  #updateManifestVersion(version: string) {
+    this.#updateManifestFile((_filePath, fileText) => {
       const findRegex = new RegExp(
         `^(version\\s*=\\s*)"${this.#pkg.version}"$`,
         "m",
@@ -145,7 +149,7 @@ export class Crate {
   }
 
   toLocalSource(crate: Crate) {
-    return this.#updateRootManifestFile((filePath, fileText) => {
+    this.#updateRootManifestFile((filePath, fileText) => {
       const relativePath = filePath.parentOrThrow().relative(crate.folderPath)
         .replace(/\\/g, "/");
       const newText =
@@ -155,7 +159,7 @@ export class Crate {
   }
 
   revertLocalSource(crate: Crate) {
-    return this.#updateRootManifestFile((filePath, fileText) => {
+    this.#updateRootManifestFile((filePath, fileText) => {
       const relativePath = filePath.parentOrThrow().relative(crate.folderPath)
         .replace(/\\/g, "/");
       const newText =
@@ -271,21 +275,13 @@ export class Crate {
       .cwd(this.folderPath);
   }
 
-  async #updateManifestFile(
+  #updateManifestFile(
     action: (filePath: PathRef, fileText: string) => string,
   ) {
-    if (this.#isUpdatingManifest) {
-      throw new Error("Cannot update manifest while updating manifest.");
-    }
-    this.#isUpdatingManifest = true;
-    try {
-      await updateFileEnsureChange(this.manifestPath, action);
-    } finally {
-      this.#isUpdatingManifest = false;
-    }
+    updateFileEnsureChange(this.manifestPath, action);
   }
 
-  async #updateRootManifestFile(
+  #updateRootManifestFile(
     action: (filePath: PathRef, fileText: string) => string,
   ) {
     const rootManifestFilePath = this.repo.folderPath.join("Cargo.toml");
@@ -295,26 +291,18 @@ export class Crate {
     ) {
       return this.#updateManifestFile(action);
     }
-    if (this.#isUpdatingRootManifest) {
-      throw new Error("Cannot update root manifest while updating it.");
-    }
-    this.#isUpdatingRootManifest = true;
-    try {
-      await updateFileEnsureChange(rootManifestFilePath, action);
-    } finally {
-      this.#isUpdatingRootManifest = false;
-    }
+    updateFileEnsureChange(rootManifestFilePath, action);
   }
 }
 
-async function updateFileEnsureChange(
+function updateFileEnsureChange(
   filePath: PathRef,
   action: (filePath: PathRef, fileText: string) => string,
 ) {
-  const originalText = await filePath.readText();
+  const originalText = filePath.readTextSync();
   const newText = action(filePath, originalText);
   if (originalText === newText) {
     throw new Error(`The file didn't change: ${filePath}`);
   }
-  await filePath.writeText(newText);
+  filePath.writeTextSync(newText);
 }

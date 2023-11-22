@@ -24,12 +24,12 @@
 //     deno run -A <url-to-this-module>
 // ```
 
-import { $, Repo } from "../mod.ts";
+import { $, Crate, Repo } from "../mod.ts";
 import { createOctoKit, getGitHubRepository } from "../github_actions.ts";
 import { CratesIoCache } from "../crates_io.ts";
 
-const cwd = $.path.resolve(".");
-const repoName = $.path.basename(cwd);
+const cwd = $.path(".").resolve();
+const repoName = cwd.basename();
 const repo = await Repo.load({
   name: repoName,
   path: cwd,
@@ -47,14 +47,13 @@ for (const crate of repo.crates) {
     }
 
     if (await cratesIo.hasDenoLandOwner(dep.name)) {
-      const latestVersion =
-        (await cratesIo.getMetadata(dep.name))?.crate.max_stable_version;
+      const latestVersion = await Crate.getLatestVersion(dep.name);
       if (latestVersion == null) {
         throw new Error(`Could not find crate version for ${dep.name}`);
       }
 
       $.logStep(`Updating ${dep.name} from ${dep.req} to ${latestVersion}...`);
-      await crate.setDependencyVersion(dep.name, latestVersion);
+      crate.setDependencyVersion(dep.name, latestVersion);
       updates.add(`${dep.name} ${latestVersion}`);
     }
   }
