@@ -47,8 +47,8 @@ for (const crate of repo.crates) {
     }
 
     if (await cratesIo.hasDenoLandOwner(dep.name)) {
-      const latestVersion =
-        (await cratesIo.getMetadata(dep.name))?.crate.max_stable_version;
+      const latestVersion = (await cratesIo.getMetadata(dep.name))?.crate
+        .max_stable_version;
       if (latestVersion == null) {
         throw new Error(`Could not find crate version for ${dep.name}`);
       }

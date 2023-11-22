@@ -77,7 +77,9 @@ export class Crate {
   }
 
   increment(part: "major" | "minor" | "patch") {
-    const newVersion = semver.format(semver.increment(semver.parse(this.version), part));
+    const newVersion = semver.format(
+      semver.increment(semver.parse(this.version), part),
+    );
     this.setVersion(newVersion);
   }
 
