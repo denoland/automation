@@ -53,7 +53,9 @@ export class GitTags {
   getGitVersionTags() {
     const result = [];
     for (const name of this.#tags) {
-      const version = semver.parse(name.replace(/^v/, ""));
+      const version = semver.parse(
+        name.replace(/^v/, "").replace(/^deno\//, ""),
+      );
       if (version != null) {
         result.push({
           name,
