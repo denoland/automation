@@ -2,9 +2,15 @@
 
 import { Octokit } from "npm:octokit@^3.1";
 
-export function getGitHubRepository() {
+export function getGitHubRepository(): { owner: string, repo: string } {
   const repoEnvVar = getEnvVarOrThrow("GITHUB_REPOSITORY");
   const [owner, repo] = repoEnvVar.split("/");
+  if (repo === undefined) {
+    throw new Error(
+      `Environment variable GITHUB_REPOSITORY ` +
+        `must be formatted as "{owner}/{repo}".`,
+    );
+  }
   return {
     owner,
     repo,
