@@ -1,6 +1,6 @@
-/// Copyright 2018-2023 the Deno authors. All rights reserved. MIT license.
+/// Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
-import { GitLogOutput } from "./helpers.ts";
+import type { GitLogOutput } from "./helpers.ts";
 
 export class VersionReleaseText {
   #fullText: string;
@@ -9,11 +9,11 @@ export class VersionReleaseText {
     this.#fullText = fullText;
   }
 
-  get fullText() {
+  get fullText(): string {
     return this.#fullText.trim();
   }
 
-  get version() {
+  get version(): string {
     const version = /\b[0-9]+\.[0-9]+\.[0-9]+\b/.exec(this.#fullText);
     if (version == null) {
       throw new Error(`Could not find version in ${this.#fullText}.`);
@@ -32,11 +32,11 @@ export class ReleasesMdFile {
     this.#fileText = Deno.readTextFileSync(filePath);
   }
 
-  get filePath() {
+  get filePath(): string {
     return this.#filePath;
   }
 
-  get fileText() {
+  get fileText(): string {
     return this.#fileText;
   }
 
@@ -69,7 +69,7 @@ export class ReleasesMdFile {
     }
   }
 
-  getLatestReleaseText() {
+  getLatestReleaseText(): VersionReleaseText {
     const version = this.getAllReleaseTexts().next().value;
     if (version instanceof VersionReleaseText) {
       return version;
@@ -78,9 +78,9 @@ export class ReleasesMdFile {
     }
   }
 
-  *getAllReleaseTexts() {
+  *getAllReleaseTexts(): Generator<VersionReleaseText> {
     const matches = this.#fileText.matchAll(/^### /mg);
-    let lastIndex = matches.next().value.index!;
+    let lastIndex = matches.next().value!.index!;
     for (const match of matches) {
       yield new VersionReleaseText(
         this.#fileText.substring(lastIndex, match.index!),

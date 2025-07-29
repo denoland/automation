@@ -1,4 +1,4 @@
-// Copyright 2018-2023 the Deno authors. All rights reserved. MIT license.
+// Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
 // # Overview
 //
@@ -43,10 +43,10 @@
 // Then in your steps:
 // ```yml
 // - name: Clone repository
-//   uses: actions/checkout@v3
+//   uses: actions/checkout@v4
 //   with:
 //     token: ${{ secrets.DENOBOT_PAT }}
-// - uses: denoland/setup-deno@v1
+// - uses: denoland/setup-deno@v2
 // - uses: dtolnay/rust-toolchain@stable
 // - name: Publish
 //   env:
@@ -88,14 +88,6 @@ for (const crate of repo.crates) {
 // run a cargo update on everything in order to update the lockfile
 for (const crate of repo.crates) {
   await crate.cargoUpdate("--workspace");
-}
-
-// todo(dsherret): ideally this would detect if the tasks exists and error on failure
-$.logStep(`Attempting to run "deno task build" if exists...`);
-try {
-  await $`deno task build`;
-} catch (err) {
-  $.logWarn("Warning", "Either build task failed or it did not exist.", err);
 }
 
 // now get the tag name to use based on the previous tags

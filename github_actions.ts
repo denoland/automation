@@ -1,8 +1,8 @@
-// Copyright 2018-2023 the Deno authors. All rights reserved. MIT license.
+// Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
-import { Octokit } from "npm:octokit@^3.1";
+import { Octokit } from "octokit";
 
-export function getGitHubRepository(): { owner: string, repo: string } {
+export function getGitHubRepository(): { owner: string; repo: string } {
   const repoEnvVar = getEnvVarOrThrow("GITHUB_REPOSITORY");
   const [owner, repo] = repoEnvVar.split("/");
   if (repo === undefined) {
@@ -17,13 +17,13 @@ export function getGitHubRepository(): { owner: string, repo: string } {
   };
 }
 
-export function createOctoKit() {
+export function createOctoKit(): Octokit {
   return new Octokit({
     auth: getGitHubToken(),
   });
 }
 
-export function getGitHubToken() {
+export function getGitHubToken(): string {
   return getEnvVarOrThrow("GITHUB_TOKEN");
 }
 

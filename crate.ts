@@ -1,8 +1,10 @@
-// Copyright 2018-2023 the Deno authors. All rights reserved. MIT license.
+// Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
-import { $, dax, PathRef, semver } from "./deps.ts";
+import * as dax from "@david/dax";
+import { $, type Path } from "@david/dax";
+import * as semver from "@std/semver";
 import type { Repo } from "./repo.ts";
-import { CargoDependencyMetadata, CargoPackageMetadata } from "./cargo.ts";
+import type { CargoDependencyMetadata, CargoPackageMetadata } from "./cargo.ts";
 import { getCratesIoMetadata } from "./crates_io.ts";
 
 export interface CrateDep {
@@ -24,28 +26,28 @@ export class Crate {
     this.#pkg = crateMetadata;
   }
 
-  get manifestPath() {
+  get manifestPath(): Path {
     return $.path(this.#pkg.manifest_path);
   }
 
-  get folderPath() {
+  get folderPath(): Path {
     return this.manifestPath.parentOrThrow();
   }
 
-  get name() {
+  get name(): string {
     return this.#pkg.name;
   }
 
-  get version() {
+  get version(): string {
     return this.#pkg.version;
   }
 
-  get dependencies() {
+  get dependencies(): readonly CargoDependencyMetadata[] {
     return this.#pkg.dependencies as readonly CargoDependencyMetadata[];
   }
 
   /** Prompts the user how they would like to patch and increments the version accordingly. */
-  async promptAndIncrement() {
+  async promptAndIncrement(): Promise<"patch" | "minor" | "major"> {
     const result = await this.promptAndTryIncrement();
     if (result == null) {
       throw new Error("No decision.");
@@ -54,7 +56,9 @@ export class Crate {
   }
 
   /** Prompts the user how they would like to patch and increments the version accordingly. */
-  async promptAndTryIncrement() {
+  async promptAndTryIncrement(): Promise<
+    "patch" | "minor" | "major" | undefined
+  > {
     $.log(`${this.name} is on ${this.version}`);
     const versionIncrement = getVersionIncrement();
     if (versionIncrement != null) {
@@ -110,12 +114,14 @@ export class Crate {
     this.#updateManifestVersion(version);
   }
 
-  static async getLatestVersion(crateName: string) {
+  static async getLatestVersion(
+    crateName: string,
+  ): Promise<string | undefined> {
     return (await getCratesIoMetadata(crateName))?.crate.max_stable_version;
   }
 
   /** Gets the latest version from crates.io or returns undefined if not exists. */
-  getLatestVersion() {
+  getLatestVersion(): Promise<string | undefined> {
     return Crate.getLatestVersion(this.name);
   }
 
@@ -169,7 +175,7 @@ export class Crate {
   }
 
   /** Gets all the descendant dependencies in the repository. */
-  descendantDependenciesInRepo() {
+  descendantDependenciesInRepo(): Crate[] {
     // try to maintain publish order.
     const crates = new Map<string, Crate>();
     const stack = [...this.immediateDependenciesInRepo()];
@@ -184,7 +190,7 @@ export class Crate {
   }
 
   /** Gets the immediate child dependencies found in the repo. */
-  immediateDependenciesInRepo() {
+  immediateDependenciesInRepo(): CrateDep[] {
     const dependencies: CrateDep[] = [];
     for (const dependency of this.#pkg.dependencies) {
       const crate = this.repo.crates.find((c) => c.name === dependency.name);
@@ -199,17 +205,17 @@ export class Crate {
   }
 
   /** Gets if published or not, returning undefined if it was never published. */
-  async isPublished() {
+  async isPublished(): Promise<boolean | undefined> {
     const cratesIoMetadata = await getCratesIoMetadata(this.name);
     if (cratesIoMetadata == null) {
       return undefined;
     }
-    return cratesIoMetadata.versions.some((v) =>
+    return cratesIoMetadata.versions.some((v: any) =>
       v.num === this.version.toString()
     );
   }
 
-  async publish(...additionalArgs: string[]) {
+  async publish(...additionalArgs: string[]): Promise<boolean> {
     const isPublished = await this.isPublished();
     if (isPublished == null) {
       $.log(`Never published, so skipping ${this.name} ${this.version}`);
@@ -269,20 +275,20 @@ export class Crate {
     await this.command(cliArgs);
   }
 
-  command(command: string | string[]) {
+  command(command: string | string[]): dax.CommandBuilder {
     return new dax.CommandBuilder()
       .command(command)
       .cwd(this.folderPath);
   }
 
   #updateManifestFile(
-    action: (filePath: PathRef, fileText: string) => string,
+    action: (filePath: Path, fileText: string) => string,
   ) {
     updateFileEnsureChange(this.manifestPath, action);
   }
 
   #updateRootManifestFile(
-    action: (filePath: PathRef, fileText: string) => string,
+    action: (filePath: Path, fileText: string) => string,
   ) {
     const rootManifestFilePath = this.repo.folderPath.join("Cargo.toml");
     if (
@@ -296,8 +302,8 @@ export class Crate {
 }
 
 function updateFileEnsureChange(
-  filePath: PathRef,
-  action: (filePath: PathRef, fileText: string) => string,
+  filePath: Path,
+  action: (filePath: Path, fileText: string) => string,
 ) {
   const originalText = filePath.readTextSync();
   const newText = action(filePath, originalText);

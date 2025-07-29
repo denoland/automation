@@ -1,6 +1,6 @@
-// Copyright 2018-2023 the Deno authors. All rights reserved. MIT license.
+// Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
-import { semver } from "./deps.ts";
+import * as semver from "@std/semver";
 
 export interface GitLogLine {
   rev: string;
@@ -14,7 +14,7 @@ export class GitLogOutput {
     this.lines = lines;
   }
 
-  formatForReleaseMarkdown() {
+  formatForReleaseMarkdown(): string {
     const IGNORED_COMMIT_PREFIX = [
       "bench",
       "build",
@@ -50,8 +50,8 @@ export class GitTags {
   }
 
   /** Gets the tags that are for a version. */
-  getGitVersionTags() {
-    const result = [];
+  getGitVersionTags(): { name: string; version: semver.SemVer }[] {
+    const result: { name: string; version: semver.SemVer }[] = [];
     for (const name of this.#tags) {
       const version = semver.parse(name.replace(/^v/, ""));
       if (version != null) {
@@ -65,23 +65,23 @@ export class GitTags {
   }
 
   /** Gets if the most recent version tag uses a `v` prefix. */
-  usesVersionVPrefix() {
+  usesVersionVPrefix(): boolean {
     const versionTags = this.getGitVersionTags();
     versionTags.sort((a, b) => semver.compare(a.version, b.version));
     const mostRecentTag = versionTags[versionTags.length - 1];
     return mostRecentTag?.name.startsWith("v") ?? false;
   }
 
-  has(tagName: string) {
+  has(tagName: string): boolean {
     return this.#tags.includes(tagName);
   }
 
-  getTagNameForVersion(version: string) {
+  getTagNameForVersion(version: string): string {
     version = version.replace(/^v/, "");
     return this.usesVersionVPrefix() ? `v${version}` : version;
   }
 
-  getPreviousVersionTag(version: string) {
+  getPreviousVersionTag(version: string): string | undefined {
     const v = semver.parse(version);
     if (v == null) {
       throw new Error(`Provided version was not a version: ${version}`);
@@ -98,6 +98,6 @@ export class GitTags {
   }
 }
 
-export function containsVersion(text: string) {
+export function containsVersion(text: string): boolean {
   return /[0-9]+\.[0-9]+\.[0-9]+/.test(text);
 }
