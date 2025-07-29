@@ -1,4 +1,4 @@
-// Copyright 2018-2023 the Deno authors. All rights reserved. MIT license.
+// Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
 // # Overview
 //
@@ -9,10 +9,10 @@
 // Create a workflow with the following steps:
 // ```yml
 // - name: Clone repository
-//   uses: actions/checkout@v3
+//   uses: actions/checkout@v4
 //   with:
 //     token: ${{ secrets.DENOBOT_PAT }}
-// - uses: denoland/setup-deno@v1
+// - uses: denoland/setup-deno@v2
 // - uses: dtolnay/rust-toolchain@stable
 // - name: Bump dependencies
 //   env:

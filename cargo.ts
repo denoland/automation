@@ -1,6 +1,6 @@
-// Copyright 2018-2023 the Deno authors. All rights reserved. MIT license.
+// Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
-import { $, PathRef } from "./deps.ts";
+import { $, type Path } from "@david/dax";
 
 export interface CargoMetadata {
   packages: CargoPackageMetadata[];
@@ -26,7 +26,9 @@ export interface CargoDependencyMetadata {
   kind: "dev" | null;
 }
 
-export function getCargoMetadata(directory: PathRef | string) {
+export function getCargoMetadata(
+  directory: Path | string,
+): Promise<CargoMetadata> {
   return $`cargo metadata --format-version 1`
     .cwd(directory)
     .json<CargoMetadata>();

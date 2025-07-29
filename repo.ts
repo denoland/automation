@@ -1,15 +1,16 @@
-/// Copyright 2018-2023 the Deno authors. All rights reserved. MIT license.
+/// Copyright 2018-2025 the Deno authors. All rights reserved. MIT license.
 
-import { CargoPackageMetadata, getCargoMetadata } from "./cargo.ts";
-import { Crate, CrateDep } from "./crate.ts";
-import { $, dax, PathRef } from "./deps.ts";
+import { type CargoPackageMetadata, getCargoMetadata } from "./cargo.ts";
+import { Crate, type CrateDep } from "./crate.ts";
+import { $, Path } from "@david/dax";
+import * as dax from "@david/dax";
 import { GitLogOutput, GitTags } from "./helpers.ts";
 
 export interface RepoLoadOptions {
   /** Name of the repo. */
   name: string;
   /** Path to the directory of the repo on the local file system. */
-  path: string | PathRef;
+  path: string | Path;
   /** Whether crates should not be loaded if a Cargo.toml exists
    * in the root of the repo. If no Cargo.toml exists, then it won't
    * load the crates anyway. */
@@ -21,12 +22,12 @@ export class Repo {
 
   private constructor(
     public readonly name: string,
-    public readonly folderPath: PathRef,
+    public readonly folderPath: Path,
   ) {
   }
 
-  static async load(options: RepoLoadOptions) {
-    const folderPath = options.path instanceof PathRef
+  static async load(options: RepoLoadOptions): Promise<Repo> {
+    const folderPath = options.path instanceof Path
       ? options.path
       : $.path(options.path);
     const repo = new Repo(options.name, folderPath);
@@ -75,7 +76,7 @@ export class Repo {
     return [...this.#crates];
   }
 
-  getCrate(name: string) {
+  getCrate(name: string): Crate {
     const crate = this.#crates.find((c) => c.name === name);
     if (crate == null) {
       throw new Error(
@@ -87,17 +88,17 @@ export class Repo {
 
   /** Gets the names of all the crates for showing in error messages
    * or for debugging purpopses. */
-  crateNamesText() {
+  crateNamesText(): string {
     return this.#crates.length === 0
       ? "<NO CRATES>"
       : this.#crates.map((c) => `- ${c.name}`).join("\n");
   }
 
-  getCratesPublishOrder() {
+  getCratesPublishOrder(): Crate[] {
     return getCratesPublishOrder(this.crates);
   }
 
-  async hasLocalChanges() {
+  async hasLocalChanges(): Promise<boolean> {
     const output = await this.command(
       "git status --porcelain --untracked-files=no",
     ).text();
@@ -113,7 +114,7 @@ export class Repo {
     }
   }
 
-  gitCurrentBranch() {
+  gitCurrentBranch(): Promise<string> {
     return this.command("git rev-parse --abbrev-ref HEAD")
       .text();
   }
@@ -165,7 +166,7 @@ export class Repo {
     ]);
   }
 
-  async gitIsShallow() {
+  async gitIsShallow(): Promise<boolean> {
     const output = await this.command("git rev-parse --is-shallow-repository")
       .text();
     return output === "true";
@@ -175,7 +176,7 @@ export class Repo {
   async gitFetchHistory(
     remote: string,
     revision?: string,
-  ) {
+  ): Promise<void> {
     if (await this.gitIsShallow()) {
       // only fetch what is necessary
       if (revision != null) {
@@ -206,7 +207,7 @@ export class Repo {
     remote: string,
     tagNameFrom: string | undefined,
     tagNameTo: string | undefined,
-  ) {
+  ): Promise<GitLogOutput> {
     if (tagNameFrom == null && tagNameTo == null) {
       throw new Error(
         "You must at least supply a tag name from or tag name to.",
@@ -248,7 +249,7 @@ export class Repo {
   }
 
   /** Gets the git remotes where the key is the remote name and the value is the url. */
-  async getGitRemotes() {
+  async getGitRemotes(): Promise<{ [name: string]: string }> {
     const remoteNames = await this.command("git remote").lines();
     const remotes: { [name: string]: string } = {};
     for (const name of remoteNames) {
@@ -259,27 +260,27 @@ export class Repo {
   }
 
   /** Gets the commit message for the current commit. */
-  gitCurrentCommitMessage() {
+  gitCurrentCommitMessage(): Promise<string> {
     return this.command("git log -1 --pretty=%B").text();
   }
 
   /** Gets the latest tag on the current branch. */
-  gitLatestTag() {
+  gitLatestTag(): Promise<string> {
     return this.command("git describe --tags --abbrev=0").text();
   }
 
-  async getGitTags() {
+  async getGitTags(): Promise<GitTags> {
     return new GitTags(await this.command("git tag").lines());
   }
 
-  command(command: string | string[]) {
+  command(command: string | string[]): dax.CommandBuilder {
     return new dax.CommandBuilder()
       .command(command)
       .cwd(this.folderPath);
   }
 }
 
-export function getCratesPublishOrder(crates: Iterable<Crate>) {
+export function getCratesPublishOrder(crates: Iterable<Crate>): Crate[] {
   const sortedCrates: ({ crate: Crate; deps: CrateDep[] })[] = [];
 
   for (const crate of crates) {

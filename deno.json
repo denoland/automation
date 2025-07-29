@@ -1,0 +1,20 @@
+{
+  "name": "@deno/rust-automation",
+  "imports": {
+    "@david/dax": "jsr:@david/dax@^0.43.2",
+    "@std/semver": "jsr:@std/semver@^1.0.5",
+    "octokit": "npm:octokit@^5.0.3"
+  },
+  "lint": {
+    "rules": {
+      "exclude": ["no-explicit-any"]
+    }
+  },
+  "exports": {
+    ".": "./mod.ts",
+    "./repo": "./repo.ts",
+    "./github-actions": "./github_actions.ts",
+    "./tasks/bump-deno-deps": "./tasks/bump_deno_deps.ts",
+    "./tasks/publish-release": "./tasks/publish_release.ts"
+  }
+}
