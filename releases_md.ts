@@ -62,7 +62,7 @@ export class ReleasesMdFile {
       let text = `### ${version} / ${formattedDate}\n\n`;
 
       if (bodyPreText != null && bodyPreText.length > 0) {
-        text += bodyPreText + "\n\n";
+        text += `${bodyPreText}\n\n`;
       }
 
       text += formattedGitLog;
