@@ -40,13 +40,18 @@ export class ReleasesMdFile {
     return this.#fileText;
   }
 
-  updateWithGitLog(
-    { gitLog, version, date }: {
-      gitLog: GitLogOutput;
-      version: string;
-      date?: Date;
-    },
-  ) {
+  updateWithGitLog({
+    gitLog,
+    version,
+    date,
+    bodyPreText,
+  }: {
+    gitLog: GitLogOutput;
+    version: string;
+    date?: Date;
+    /** Text to insert after the title and before the git log. */
+    bodyPreText?: string;
+  }) {
     const insertText = getInsertText();
     this.#updateText(this.#fileText.replace(/^### /m, insertText + "\n\n### "));
 
@@ -54,8 +59,15 @@ export class ReleasesMdFile {
       const formattedGitLog = gitLog.formatForReleaseMarkdown();
       const formattedDate = getFormattedDate(date ?? new Date());
 
-      return `### ${version} / ${formattedDate}\n\n` +
-        `${formattedGitLog}`;
+      let text = `### ${version} / ${formattedDate}\n\n`;
+
+      if (bodyPreText != null && bodyPreText.length > 0) {
+        text += bodyPreText + "\n\n";
+      }
+
+      text += formattedGitLog;
+
+      return text;
 
       function getFormattedDate(date: Date) {
         const formattedMonth = padTwoDigit(date.getMonth() + 1);
