@@ -99,7 +99,7 @@ export class Crate {
         "gm",
       );
 
-      const newText = originalText.replace(findRegex, `$1"${version}"`);
+      const newText = originalText.replace(findRegex, `$1"$2${version}"`);
       if (originalText !== newText) {
         rootpath.writeTextSync(newText);
       } else {
@@ -136,7 +136,7 @@ export class Crate {
           `^(\\b${dependencyName}\\b\\s.*)"([=\\^])?[0-9]+[^"]+"`,
           "gm",
         );
-        return fileText.replace(findRegex, `$1"${version}"`);
+        return fileText.replace(findRegex, `$1"$2${version}"`);
       });
 
       dependency.req = `^${version}`;
