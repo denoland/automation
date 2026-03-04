@@ -247,8 +247,8 @@ export class Crate {
           next() {
             value++;
             return value * 5_000;
-          }
-        }
+          },
+        };
       })(),
     });
   }
