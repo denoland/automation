@@ -241,7 +241,15 @@ export class Crate {
         return true;
       },
       count: 5,
-      delay: "10s",
+      delay: (() => {
+        let value = 1;
+        return {
+          next() {
+            value++;
+            return value * 5_000;
+          }
+        }
+      })(),
     });
   }
 
